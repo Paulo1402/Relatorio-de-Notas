@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RELATÓRIO DE NOTAS</title>
+    <style>
+      body {
+        font-family: Bookman Old Style;
+        font-weight: bold;
+        font-style: italic;
+
+        text-align: center;
+        width: 500px;
+        margin: auto;
+      }
+
+      h1,
+      h2 {
+        font-size: 15px;
+      }
+
+      table {
+        margin-top: 25px;
+        border-collapse: collapse;
+        width: 500px;
+      }
+
+      thead {
+        font-size: 14px;
+        background-color: black;
+        color: white;
+      }
+
+      tbody {
+        font-family: Calibri;
+        font-size: 14px;
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      td,
+      th {
+        border: 1px solid black;
+        padding: 5px;
+      }
+
+      tr:nth-child(even) {
+        background-color: #dddddd;
+      }
+
+      tfoot tr,
+      tfoot td:nth-child(-n + 3) {
+        background-color: none;
+        border: none;
+      }
+
+      tfoot td:nth-last-child(1) {
+        background-color: yellow;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MADEIREIRA KAMUA LTDA</h1>
+    <h2>RELATÓRIO DE NOTAS JANEIRO 2023</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>NOTA</th>
+          <th>DATA</th>
+          <th>FORNECEDOR</th>
+          <th>VALOR</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td>5501</td>
+          <td>29/jan</td>
+          <td>ELETROMAR</td>
+          <td>R$ 2.501,00</td>
+        </tr>
+        <tr>
+          <td>251</td>
+          <td>30/jan</td>
+          <td>TUNAS BORRACHARIA</td>
+          <td>R$ 2.789,00</td>
+        </tr>
+        <tr>
+          <td>5501</td>
+          <td>29/jan</td>
+          <td>ELETROMAR</td>
+          <td>R$ 2.501,00</td>
+        </tr>
+      </tbody>
+
+      <tfoot>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td>R$5.290</td>
+        </tr>
+      </tfoot>
+    </table>
+  </body>
+</html>
