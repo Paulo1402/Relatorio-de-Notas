@@ -2,6 +2,8 @@ from jinja2 import Template
 from bs4 import BeautifulSoup
 
 html = '''
+<h1>MADEIREIRA KAMUA LTDA</h1>
+<h2>RELATÓRIO DE NOTAS {{ month }} {{ year }} </h2>
 <table>
     <thead>
         <tr>
@@ -17,7 +19,7 @@ html = '''
             <td>{{ d['nfe'] }}</td>
             <td>{{ d['date'] }}</td>
             <td>{{ d['supplier'] }}</td>
-            <td>{{ d['price'] }}</td>
+            <td>{{ d['value'] }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -26,19 +28,27 @@ html = '''
             <td></td>
             <td></td>
             <td></td>
-            <td>R$5.290</td>
+            <td>{{ total }}</td>
         </tr>
     </tfoot>
 </table>
 '''
 
+# %d/%b
+
 template = Template(html)
 data = [
-    {'nfe': 251, 'date': '25/jan', 'supplier': 'ELETROMAR', 'price': 'R$ 1.570,10'},
-    {'nfe': 102, 'date': '28/jan', 'supplier': 'PESA', 'price': 'R$ 2.415,19'}
+    {'nfe': 251, 'date': '25/jan', 'supplier': 'ELETROMAR', 'value': 'R$ 1.570,10'},
+    {'nfe': 102, 'date': '28/jan', 'supplier': 'PESA', 'value': 'R$ 2.415,19'}
 ]
+total = 1
 
-res = template.render(data=data)
+with open('templates/report.html', 'r', encoding='utf-8') as f:
+    html_soup = BeautifulSoup(f.read(), 'html.parser')
+
+res = template.render(data=data, total=total, month='JANEIRO', year='2023')
 soup = BeautifulSoup(res, 'html.parser')
 
-print(soup.prettify())
+html_soup.find('body').append(soup)
+
+print(html_soup.prettify())

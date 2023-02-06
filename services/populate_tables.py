@@ -3,6 +3,7 @@ import csv
 from PyQt6.QtSql import QSqlQuery
 
 from database.connection import connection
+from utils import parse_date, from_currency_to_float
 
 QSqlQuery(connection).exec('DELETE FROM history')
 QSqlQuery(connection).exec('DELETE FROM suppliers')
@@ -28,14 +29,13 @@ with open('../history.csv') as f:
     for _, nfe, date, supplier, value in csvreader:
         if not header:
             populate_table_query.addBindValue(nfe)
-            populate_table_query.addBindValue(date)
+            populate_table_query.addBindValue(parse_date(date, '%d/%m/%Y', '%Y-%m-%d'))
             populate_table_query.addBindValue(supplier)
-            populate_table_query.addBindValue(value)
+            populate_table_query.addBindValue(from_currency_to_float(value))
 
             populate_table_query.exec()
 
         header = False
-
 
 query = QSqlQuery(connection)
 query.exec("SELECT count(*) FROM history")
@@ -57,17 +57,16 @@ with open('../suppliers.csv') as f:
     header = True
 
     for supplier in csvreader:
+
         if not header:
-            populate_table_query.addBindValue(supplier)
+            populate_table_query.addBindValue(supplier[0])
 
             populate_table_query.exec()
 
         header = False
-
 
 query = QSqlQuery(connection)
 query.exec("SELECT count(*) FROM suppliers")
 query.first()
 
 print(query.value(0))
-
