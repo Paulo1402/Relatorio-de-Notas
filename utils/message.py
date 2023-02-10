@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QMessageBox, QWidget
 
 
+# Template de QMessageBox com captions personalizados para botões
 class Message(QMessageBox):
     def __init__(
             self,
@@ -12,6 +13,7 @@ class Message(QMessageBox):
         if buttons:
             self.setCaptionButtons(buttons)
 
+    # Executa MessageBox
     def show_message(
             self, title: str,
             message: str,
@@ -25,6 +27,7 @@ class Message(QMessageBox):
 
         return super().exec()
 
+    # Seta captions personalizados
     def setCaptionButtons(self, buttons: list[tuple[QMessageBox.StandardButton, str]]):
         b = 0
 

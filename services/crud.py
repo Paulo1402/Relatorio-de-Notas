@@ -3,11 +3,13 @@ from PyQt6.QtSql import QSqlQuery
 from database.connection import connection
 
 
+# Exceção lançada ao falhar uma query
 class QueryError(Exception):
     def __init__(self, query):
         self.query = query
 
 
+# Cria registro no banco de dados
 def create(table: str, fields: dict):
     query = QSqlQuery(connection)
 
@@ -25,6 +27,7 @@ def create(table: str, fields: dict):
         raise QueryError(f'Failed execution on query expression: {query.lastQuery()}')
 
 
+# Lê registros de uma tabela e retorna o objeto com os resultados
 def read(table: str, fields: list[str], where: dict):
     query = QSqlQuery(connection)
 
@@ -47,6 +50,7 @@ def read(table: str, fields: list[str], where: dict):
     return query
 
 
+# Atualiza registros no banco de dados
 def update(table: str, fields: dict, id_record: int):
     query = QSqlQuery(connection)
 
@@ -65,6 +69,7 @@ def update(table: str, fields: dict, id_record: int):
         raise QueryError(f'Failed execution on query expression: {query.lastQuery()}')
 
 
+# Deleta registros em uma tabela
 def delete(table: str, id_record: int):
     query = QSqlQuery(connection)
 
@@ -77,29 +82,3 @@ def delete(table: str, id_record: int):
 
     if not query.exec():
         raise QueryError(f'Failed execution on query expression: {query.lastQuery()}')
-
-# create('history', {
-#     'nfe': '1414',
-#     'date': '2023-01-20',
-#     'supplier': 'TEST',
-#     'value': '1400'
-# })
-
-# q = read('history', ['nfe'], {
-#     'clause': 'id > 0',
-#     'values': []
-# })
-#
-# q.first()
-#
-# while q.next():
-#     print(q.value(0))
-
-# update('history', {
-#     'nfe': '1420',
-#     'date': '2023-01-31',
-#     'supplier': 'TEST edit',
-#     'value': '1800'
-# }, id_record=528)
-
-# delete('history', id_record=528)
