@@ -26,12 +26,16 @@
    "value": "Relat\u00f3rio de Notas"
   },
   {
+   "optionDest": "upx_dir",
+   "value": "C:/upx-4.0.2-win64"
+  },
+  {
    "optionDest": "ascii",
    "value": false
   },
   {
    "optionDest": "clean_build",
-   "value": false
+   "value": true
   },
   {
    "optionDest": "strip",

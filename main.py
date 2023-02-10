@@ -258,6 +258,9 @@ class App(QMainWindow, Ui_MainWindow):
         QMessageBox.information(self, 'AVISO', message)
         self.registry_menu_clicked()
 
+        # Faz nova pesquisa na página 'pesquisar'
+        self.search()
+
     # Limpa campos da página registro
     def clear_registry(self):
         self.txt_nfe.clear()
@@ -279,9 +282,15 @@ class App(QMainWindow, Ui_MainWindow):
         if answer == self.no:
             return
 
+        # Deleta registro
         delete(table='history', id_record=self.ID)
+
+        # Prepara para novo registro e avisa usuário
         QMessageBox.information(self, 'AVISO', 'Registro deletado com sucesso.')
         self.registry_menu_clicked()
+
+        # Faz nova pesquisa na página 'pesquisar'
+        self.search()
 
     # Limpa campos da página de pesquisa
     def clear_search(self):
@@ -477,15 +486,17 @@ if __name__ == "__main__":
         # noinspection PyUnresolvedReferences
         from ctypes import windll
 
-        myappid = 'kamua.nfe_report.0.1.0'
+        myappid = 'kamua.nfe_report.1.0.0'
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except ImportError:
         pass
 
     sys.excepthook = exception_hook
+
     qt = QApplication(sys.argv)
     qt.setStyle('Fusion')
     qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
+
     app = App()
     app.show()
 

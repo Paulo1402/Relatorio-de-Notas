@@ -27,7 +27,7 @@ if __name__ == '__main__':
     )
 
     # Faz a modelagem dos dados de um arquivo .csv para inserir na tabela
-    with open('../history.csv') as f:
+    with open('history.csv') as f:
         csvreader = csv.reader(f, delimiter=';')
         header = True
 
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         """
     )
 
-    with open('../suppliers.csv') as f:
+    with open('suppliers.csv') as f:
         csvreader = csv.reader(f, delimiter=';')
         header = True
 

@@ -3,11 +3,16 @@ import os
 from PyQt6.QtSql import QSqlDatabase, QSqlQuery
 
 # Caminho para o banco de dados
-DB = os.path.join(os.path.dirname(__file__), 'db.sqlite')
+db_folder = os.path.dirname(__file__)
+
+if not os.path.exists(db_folder):
+    os.mkdir(db_folder)
+
+db = os.path.join(db_folder, 'db.sqlite')
 
 # Cria conexão com banco de dados
 connection = QSqlDatabase.addDatabase('QSQLITE')
-connection.setDatabaseName(DB)
+connection.setDatabaseName(db)
 
 # Abre conexão com banco de dados
 if not connection.open():

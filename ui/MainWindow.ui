@@ -677,8 +677,11 @@
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
             </property>
-            <property name="statusTip">
+            <property name="toolTip">
              <string>PESQUISAR</string>
+            </property>
+            <property name="statusTip">
+             <string/>
             </property>
             <property name="text">
              <string/>
