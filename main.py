@@ -14,6 +14,11 @@ from utils import *
 from services import *
 
 
+# todo Sistema de backup semanal
+# todo Menu Action para deletar dados do autocomplete de fornecedor
+# todo Menu Action para deletar dados anuais Ex: todos os dados do ano de 2022
+
+
 # Janela principal
 class App(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -496,6 +501,14 @@ if __name__ == "__main__":
     qt = QApplication(sys.argv)
     qt.setStyle('Fusion')
     qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
+
+    try:
+        # noinspection PyUnresolvedReferences
+        import pyi_splash
+
+        pyi_splash.close()
+    except ModuleNotFoundError:
+        pass
 
     app = App()
     app.show()
