@@ -2,10 +2,15 @@ import csv
 
 from PyQt6.QtSql import QSqlQuery
 
-from database.connection import connection
+from services.connection import DatabaseConnection
 from utils import parse_date, from_currency_to_float
 
 if __name__ == '__main__':
+    database = DatabaseConnection()
+    database.connect()
+
+    connection = database.connection
+
     # Deleta conteúdo das tabelas
     QSqlQuery(connection).exec('DELETE FROM history')
     QSqlQuery(connection).exec('DELETE FROM suppliers')

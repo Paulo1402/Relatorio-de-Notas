@@ -1,49 +1,64 @@
 import sys
 import os
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog, QHeaderView
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView
 from PyQt6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression
 from PyQt6.QtGui import QPageLayout, QIcon, QPageSize, QRegularExpressionValidator, QCloseEvent
 from PyQt6.QtPrintSupport import QPrinter
 
 from ui.MainWindow import Ui_MainWindow
-from utils.model import Model
-from utils.message import Message
-from utils.calendar import Calendar
 from utils import *
 from services import *
-
-
-# todo Sistema de backup semanal
-# todo Menu Action para deletar dados do autocomplete de fornecedor
-# todo Menu Action para deletar dados anuais Ex: todos os dados do ano de 2022
 
 
 # Janela principal
 class App(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setupUi(self)
 
         # Instancia variáveis
-        self.calendars: dict | None = None
-        self.model: Model | None = None
         self._ID: int | None = None
+        self.model: TableModel | None = None
 
         # Cria aliases para botões
-        self.yes = QMessageBox.StandardButton.Yes
-        self.no = QMessageBox.StandardButton.No
+        self.yes = Message.StandardButton.Yes
+        self.no = Message.StandardButton.No
 
         # Cria template popup
         self.message = Message(self, [(self.yes, 'Sim'), (self.no, 'Não')])
 
-        # Estrutura componentes da ui e em seguida chama a inicialização da janela principal
-        self.setupUi(self)
+        # Abre conexão com o banco de dados
+        self.database = DatabaseConnection()
+        self.database.connect()
+
+        # Inicialização
         self.init_ui()
+        do_backup(self.database)
+
+        # Define a primeira página ao abrir o progrma
+        self.registry_menu_clicked()
 
     # Fecha conexão com banco de dados ao fechar o aplicativo
     def closeEvent(self, a0: QCloseEvent) -> None:
-        close_connection()
+        self.database.disconnect()
         a0.accept()
+
+    def show(self) -> None:
+        super().show()
+
+        if self.database.connection_state == DatabaseConnection.STATE.DATABASE_NOT_FOUND:
+            Message.critical(
+                self,
+                'CRÍTICO',
+                'Erro ao acessar banco de dados!\n'
+                'Se seu banco de dados estiver na rede verifique se há conexão com a internet.'
+            )
+        elif self.database.connection_state == DatabaseConnection.STATE.NO_DATABASE:
+            Message.warning(self, 'ATENÇÃO', 'Insira um banco de dados para usar o programa.')
+            self.action_config.trigger()
+
+        self.setup_data()
 
     @property
     def ID(self):
@@ -72,6 +87,13 @@ class App(QMainWindow, Ui_MainWindow):
         self.setWindowTitle('Relatório de Notas')
         self.setFixedSize(785, 560)
 
+        # Define atalho ao clicar na tecla ENTER na tela de pesquisa
+        self.bt_search.setShortcut('Return')
+
+        # Configura web view
+        self.web_view.setZoomFactor(0.8)
+        self.web_view.setHtml('')
+
         # Popula Month ComboBox
         self.cb_month.addItems([
             'JANEIRO',
@@ -88,8 +110,19 @@ class App(QMainWindow, Ui_MainWindow):
             'DEZEMBRO'
         ])
 
-        # Adiciona na ComboBox anos conforme os registros no banco de dados
-        years = get_years()
+        # Seta model para list view e faz pesquisa
+        self.model = TableModel()
+        self.table_search.setModel(self.model)
+
+        # Seta botões do menu
+        self.action_config.triggered.connect(lambda: ConfigurationDialog(self, self.database).show())
+        self.action_suppliers.triggered.connect(lambda: SupplierDialog(self, self.database).show())
+        self.action_years.triggered.connect(lambda: YearDialog(self, self.database).show())
+        self.action_import_backup.triggered.connect(lambda: ImportBackupDialog(self, self.database).show())
+
+        # Carrega anos conforme os registros no banco de dados
+        years = get_years(self.database)
+        self.cb_year.clear()
         self.cb_year.addItems(years)
 
         # Seta ano e mês atual
@@ -97,36 +130,22 @@ class App(QMainWindow, Ui_MainWindow):
         self.cb_month.setCurrentIndex(current_month - 1)
         self.cb_year.setCurrentText(str(current_year))
 
-        # Carrega fornecedores para ComboBox
-        self.load_suppliers()
-
         # Remove valor inicial do ComboBox e alinha ao centro
         self.cb_supplier.setCurrentIndex(-1)
         self.cb_supplier.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Salva calendários na memória
-        self.calendars = {
-            "date": Calendar(self, self.txt_date, 'Data'),
-            "start_date": Calendar(self, self.txt_start_date, 'Data Inicial'),
-            "end_date": Calendar(self, self.txt_end_date, 'Data Final')
-        }
-
-        # Seta model para list view e faz pesquisa
-        self.model = Model()
-        self.table_search.setModel(self.model)
-        self.search()
 
         # Define slots para os botões da página 'Registrar'
         self.bt_save.clicked.connect(self.save_registry)
         self.bt_clear.clicked.connect(self.clear_registry)
         self.bt_delete.clicked.connect(self.delete_registry)
-        self.bt_calendar_date.clicked.connect(lambda: self.calendars['date'].show())
+        self.bt_calendar_date.clicked.connect(lambda: CalendarDialog(self, self.txt_date, 'Data').show())
 
         # Define slots para os botões da página 'Pesquisar'
         self.bt_clear_search.clicked.connect(self.clear_search)
         self.bt_search.clicked.connect(self.search)
-        self.bt_calendar_start_date.clicked.connect(lambda: self.calendars['start_date'].show())
-        self.bt_calendar_end_date.clicked.connect(lambda: self.calendars['end_date'].show())
+        self.bt_calendar_start_date.clicked.connect(
+            lambda: CalendarDialog(self, self.txt_start_date, 'Data Inicial').show())
+        self.bt_calendar_end_date.clicked.connect(lambda: CalendarDialog(self, self.txt_end_date, 'Data Final').show())
 
         # Define slots para o evento de double click na table view
         self.table_search.doubleClicked.connect(self.history_record_selected)
@@ -153,12 +172,18 @@ class App(QMainWindow, Ui_MainWindow):
         self.txt_nfe_search.setValidator(validator)
         self.txt_nfe.setValidator(validator)
 
-        # Configura web view e cria relatório
-        self.web_view.setZoomFactor(0.8)
-        self.create_report()
+    def setup_data(self):
+        connected = self.database.connection_state == DatabaseConnection.STATE.CONNECTED
 
-        # Define a primeira página ao abrir o progrma
-        self.registry_menu_clicked()
+        self.action_years.setDisabled(not connected)
+        self.action_suppliers.setDisabled(not connected)
+        self.mp_main.setDisabled(not connected)
+
+        if connected:
+            # Carrega dados para dentro do app
+            self.load_suppliers()
+            self.create_report()
+            self.search()
 
     # Ativa página 'registrar' e entra no modo inserção
     def registry_menu_clicked(self):
@@ -177,6 +202,7 @@ class App(QMainWindow, Ui_MainWindow):
         self.statusBar.clearMessage()
 
     # Cria ou edita registro no banco de dados
+    @check_connection
     def save_registry(self):
         fields = [
             self.txt_nfe,
@@ -189,7 +215,7 @@ class App(QMainWindow, Ui_MainWindow):
         empty_fields = get_empty_fields(fields)
 
         if len(empty_fields) > 0:
-            QMessageBox.warning(self, 'ATENÇÃO', 'Preencha os campos obrigatórios!')
+            Message.warning(self, 'ATENÇÃO', 'Preencha os campos obrigatórios!')
             empty_fields[0].setFocus()
             return
 
@@ -197,7 +223,7 @@ class App(QMainWindow, Ui_MainWindow):
 
         # Verifica se é uma data válida
         if not date:
-            QMessageBox.warning(self, 'ATENÇÃO', 'Data inválida!')
+            Message.warning(self, 'ATENÇÃO', 'Data inválida!')
             self.txt_date.setFocus()
             return
 
@@ -211,9 +237,8 @@ class App(QMainWindow, Ui_MainWindow):
 
         # Caso ID seja -1 então estamos em modo de inserção
         if self.ID == -1:
-
             # Verifica se já existe um registro com a mesma nfe e fornecedor no banco de dados
-            query = read(
+            query = self.database.read(
                 table='history',
                 fields=['count(*)'],
                 where={
@@ -225,7 +250,7 @@ class App(QMainWindow, Ui_MainWindow):
             query.first()
 
             if query.value(0) > 0:
-                QMessageBox.warning(self, 'ATENÇÃO', 'Essa nota já foi registrada com esse fornecedor!')
+                Message.warning(self, 'ATENÇÃO', 'Essa nota já foi registrada com esse fornecedor!')
                 return
 
             message = 'Deseja inserir esse registro no banco de dados?'
@@ -236,7 +261,7 @@ class App(QMainWindow, Ui_MainWindow):
         answer = self.message.show_message(
             'ATENÇÃO',
             message,
-            QMessageBox.Icon.Warning,
+            Message.Icon.Warning,
             default_button=self.yes
         )
 
@@ -247,26 +272,27 @@ class App(QMainWindow, Ui_MainWindow):
         supplier = self.cb_supplier.currentText().upper()
 
         if self.cb_supplier.findText(supplier) == -1:
-            create(table='suppliers', fields={'supplier': supplier})
+            self.database.create(table='suppliers', fields={'supplier': supplier})
             self.load_suppliers()
 
         # Caso esteja em modo de inserção
         if self.ID == -1:
-            create(table='history', fields=fields)
+            self.database.create(table='history', fields=fields)
             message = 'Registro inserido com sucesso.'
         # Do contrário se trata de modo de edição
         else:
-            update(table='history', fields=fields, id_record=self.ID)
+            self.database.update(table='history', fields=fields, id_record=self.ID)
             message = 'Registro alterado com sucesso.'
 
         # Prepara para novo registro e avisa usuário
-        QMessageBox.information(self, 'AVISO', message)
+        Message.information(self, 'AVISO', message)
         self.registry_menu_clicked()
 
         # Faz nova pesquisa na página 'pesquisar'
         self.search()
 
     # Limpa campos da página registro
+    @check_connection
     def clear_registry(self):
         self.txt_nfe.clear()
         self.txt_date.clear()
@@ -276,11 +302,12 @@ class App(QMainWindow, Ui_MainWindow):
         self.txt_nfe.setFocus()
 
     # Deleta registro
+    @check_connection
     def delete_registry(self):
         answer = self.message.show_message(
             'ATENÇÃO',
             'Deseja deletar esse registro no banco de dados?',
-            QMessageBox.Icon.Warning,
+            Message.Icon.Warning,
             default_button=self.no
         )
 
@@ -288,16 +315,20 @@ class App(QMainWindow, Ui_MainWindow):
             return
 
         # Deleta registro
-        delete(table='history', id_record=self.ID)
+        try:
+            self.database.delete(table='history', clause=f'WHERE id LIKE {self.ID}')
 
-        # Prepara para novo registro e avisa usuário
-        QMessageBox.information(self, 'AVISO', 'Registro deletado com sucesso.')
-        self.registry_menu_clicked()
+            # Prepara para novo registro e avisa usuário
+            Message.information(self, 'AVISO', 'Registro deletado com sucesso.')
+            self.registry_menu_clicked()
 
-        # Faz nova pesquisa na página 'pesquisar'
-        self.search()
+            # Faz nova pesquisa na página 'pesquisar'
+            self.search()
+        except QueryError:
+            Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a operação!')
 
     # Limpa campos da página de pesquisa
+    @check_connection
     def clear_search(self):
         self.txt_nfe_search.clear()
         self.txt_supplier_search.clear()
@@ -307,6 +338,7 @@ class App(QMainWindow, Ui_MainWindow):
         self.txt_nfe_search.setFocus()
 
     # Pesquisa dados no banco de dados e insere na QTableView
+    @check_connection
     def search(self):
         nfe = self.txt_nfe_search.text()
         supplier = self.txt_supplier_search.text()
@@ -315,7 +347,7 @@ class App(QMainWindow, Ui_MainWindow):
 
         try:
             # Realiza consulta
-            query = read(
+            query = self.database.read(
                 table='history',
                 fields=['id', 'nfe', 'date', 'supplier', 'value'],
                 where={
@@ -337,7 +369,7 @@ class App(QMainWindow, Ui_MainWindow):
             self.table_search.setColumnHidden(0, True)
             self.table_search.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         except QueryError as e:
-            QMessageBox.critical(
+            Message.critical(
                 self,
                 'CRÍTICO',
                 f'Não foi possível realizar a consulta, verifique a query.\n\n{e.query}'
@@ -348,7 +380,7 @@ class App(QMainWindow, Ui_MainWindow):
         answer = self.message.show_message(
             'ATENÇÃO',
             'Deseja exportar o relatório em pdf?',
-            QMessageBox.Icon.Question,
+            Message.Icon.Question,
             default_button=self.yes
         )
 
@@ -369,14 +401,14 @@ class App(QMainWindow, Ui_MainWindow):
         # Caso usuário selecione um local, salva em pdf e informa usuário
         if path:
             self.web_view.printToPdf(path, layout)
-            QMessageBox.information(self, 'AVISO', 'Relatório exportado!')
+            Message.information(self, 'AVISO', 'Relatório exportado!')
 
     # Imprime relatório
     def print_report(self):
         answer = self.message.show_message(
             'ATENÇÃO',
             'Deseja imprimir o relátorio?',
-            QMessageBox.Icon.Question,
+            Message.Icon.Question,
             default_button=self.yes
         )
 
@@ -388,7 +420,7 @@ class App(QMainWindow, Ui_MainWindow):
         printer.setPageMargins(QMarginsF(0, 20, 0, 20))
         self.web_view.print(printer)
 
-        QMessageBox.information(self, 'AVISO', 'Relatório impresso!')
+        Message.information(self, 'AVISO', 'Relatório impresso!')
 
     # Traz dados da QTableView para a página de registro
     def history_record_selected(self, index: QModelIndex | int):
@@ -412,8 +444,9 @@ class App(QMainWindow, Ui_MainWindow):
         self.ID = id_record
 
     # Carrega fornecedores
+    @check_connection
     def load_suppliers(self):
-        query = read(
+        query = self.database.read(
             table='suppliers',
             fields=['supplier'],
             where={
@@ -429,8 +462,10 @@ class App(QMainWindow, Ui_MainWindow):
 
         self.cb_supplier.clear()
         self.cb_supplier.addItems(data)
+        self.cb_supplier.setCurrentIndex(-1)
 
     # Cria relatório
+    @check_connection
     def create_report(self):
         month = self.cb_month.currentText()
         year = self.cb_year.currentText()
@@ -441,9 +476,9 @@ class App(QMainWindow, Ui_MainWindow):
         rows = []
         total = 0
 
-        # Realiza query para pegar dados no range
-        queue = read(
-            'history',
+        # Realiza query para pegar dados no range do mês
+        query = self.database.read(
+            table='history',
             fields=['nfe', 'date', 'supplier', 'value'],
             where={
                 'clause': "WHERE date >= ? AND date <= ? ORDER BY date",
@@ -451,11 +486,11 @@ class App(QMainWindow, Ui_MainWindow):
             }
         )
 
-        while queue.next():
-            nfe = queue.value(0)
-            date = queue.value(1)
-            supplier = queue.value(2)
-            value = queue.value(3)
+        while query.next():
+            nfe = query.value(0)
+            date = query.value(1)
+            supplier = query.value(2)
+            value = query.value(3)
 
             rows.append({
                 'nfe': nfe,
@@ -487,6 +522,7 @@ def exception_hook(exctype, value, traceback):
 
 # Inicia o aplicativo
 if __name__ == "__main__":
+    # Altera id do aplicativo para evitar bugs com o ícone na barra de tarefas
     try:
         # noinspection PyUnresolvedReferences
         from ctypes import windll
@@ -496,12 +532,14 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
+    # Vincula hook personalizado para receber logs durante desenvolvimento
     sys.excepthook = exception_hook
 
     qt = QApplication(sys.argv)
     qt.setStyle('Fusion')
     qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
 
+    # Desativa splash do pyinstaller quando a aplicação carregar
     try:
         # noinspection PyUnresolvedReferences
         import pyi_splash

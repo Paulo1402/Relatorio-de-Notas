@@ -978,8 +978,70 @@
      <height>22</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menu_db">
+    <property name="tearOffEnabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Banco de dados</string>
+    </property>
+    <property name="separatorsCollapsible">
+     <bool>false</bool>
+    </property>
+    <property name="toolTipsVisible">
+     <bool>false</bool>
+    </property>
+    <addaction name="action_config"/>
+    <addaction name="separator"/>
+    <addaction name="action_years"/>
+    <addaction name="action_suppliers"/>
+    <addaction name="separator"/>
+    <addaction name="action_import_backup"/>
+   </widget>
+   <addaction name="menu_db"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="action_config">
+   <property name="icon">
+    <iconset>
+     <normaloff>../assets/db-64.png</normaloff>../assets/db-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>Configurar</string>
+   </property>
+  </action>
+  <action name="action_suppliers">
+   <property name="icon">
+    <iconset>
+     <normaloff>../assets/supplier-48.png</normaloff>../assets/supplier-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>Fornecedores</string>
+   </property>
+  </action>
+  <action name="actionBackup">
+   <property name="text">
+    <string>Backup</string>
+   </property>
+  </action>
+  <action name="action_years">
+   <property name="icon">
+    <iconset>
+     <normaloff>../assets/data-48.png</normaloff>../assets/data-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>Anos</string>
+   </property>
+  </action>
+  <action name="action_import_backup">
+   <property name="icon">
+    <iconset>
+     <normaloff>../assets/backup-48.png</normaloff>../assets/backup-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>Importar Backup</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
