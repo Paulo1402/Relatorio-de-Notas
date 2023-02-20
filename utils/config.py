@@ -5,6 +5,7 @@ import os
 BASEDIR = os.path.dirname(os.path.dirname(__file__))
 
 
+# Retorna configurações do aplicativo
 def get_config():
     path = os.path.join(BASEDIR, 'config.json')
 
@@ -35,6 +36,7 @@ def get_config():
     return config
 
 
+# Seta configurações do aplicativo
 def set_config(config: dict):
     path = os.path.join(BASEDIR, 'config.json')
 

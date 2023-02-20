@@ -6,6 +6,7 @@ from services import DatabaseConnection
 from utils import set_config, get_config
 
 
+# Diálogo para configurar banco de dados
 class ConfigurationDialog(QDialog, Ui_Dialog):
     def __init__(self, parent, dabase: DatabaseConnection):
         super().__init__(parent)
@@ -34,6 +35,7 @@ class ConfigurationDialog(QDialog, Ui_Dialog):
         self.group_max_backup.setDisabled(True)
         self.frame_backup.setDisabled(True)
 
+        # Retorna configurações atuais e seta na interface
         config = get_config()
 
         self.database_path = config['database']
@@ -59,6 +61,7 @@ class ConfigurationDialog(QDialog, Ui_Dialog):
             if radio.isChecked():
                 return key
 
+    # Salva configurações ao fehcar caixa de diálogo
     def closeEvent(self, a0: QCloseEvent):
         frequency = self.get_checked_radio(self.frequency_radios)
         max_backups = self.get_checked_radio(self.max_amount_radios)
@@ -74,10 +77,12 @@ class ConfigurationDialog(QDialog, Ui_Dialog):
         }
         set_config(config)
 
+        # Caso haja alterações no caminho do banco de dados restabelece a conexão e recarrega dados
         if path != self.database_path:
             self.database.connect()
             self.parent().setup_data()
 
+    # Abre caixa de diálogo para criar um arquivo
     def new_file(self):
         path = QFileDialog.getSaveFileName(self, 'Salvar banco de dados', filter='(*.sqlite)')[0]
 
@@ -89,6 +94,7 @@ class ConfigurationDialog(QDialog, Ui_Dialog):
 
         self.txt_source.setText(path)
 
+    # Abre caixa de diálogo para selecionar um arquivo
     def open_file(self):
         path = QFileDialog.getOpenFileName(self, 'Selecionar banco de dados', filter='(*.sqlite)')[0]
 

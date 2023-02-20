@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-# Retorna anos
+# Retorna anos dos dados
 def get_years(database: DatabaseConnection, force_current_year: bool = True):
     query = QSqlQuery(database.connection)
     query.exec("SELECT DISTINCT strftime('%Y', date) FROM history ORDER BY date")
@@ -38,11 +38,13 @@ def get_years(database: DatabaseConnection, force_current_year: bool = True):
     return years
 
 
+# Deleta todos os registros de um ano específico
 def delete_year(database: DatabaseConnection, year: str):
     query = QSqlQuery(database.connection)
     query.exec(f"DELETE FROM history WHERE strftime('%Y', date) LIKE {year}")
 
 
+# Checa conexão com banco de dados antes de executar uma função que requer conexão
 def check_connection(func):
     def inner(self, *_, **__):
         if self.database.connection_state != DatabaseConnection.STATE.CONNECTED:
@@ -54,7 +56,9 @@ def check_connection(func):
     return inner
 
 
+# Realiza o backup do banco de dados em arquivos .csv
 def do_backup(database: DatabaseConnection):
+    # Cria arquivo csv com dados da tabela
     def write_csv(filename: str, header: list, query: QSqlQuery):
         with open(filename, 'w', encoding='utf8') as f:
             writer = csv.writer(f, delimiter=';', quoting=csv.QUOTE_NONNUMERIC, lineterminator='\n')
@@ -64,6 +68,7 @@ def do_backup(database: DatabaseConnection):
                 values = [query.value(i) for i in range(len(header))]
                 writer.writerow(values)
 
+    # Pega as configurações do aplicativo
     config = get_config()
 
     db = config['database']
@@ -72,16 +77,21 @@ def do_backup(database: DatabaseConnection):
     frequency = backup['frequency']
     max_backups = backup['max_backups']
 
-    if frequency == 'no_backups' or not db:
+    # Caso não haja um banco de dados configurado ou 'no_backups' está setado aborta backup
+    if not db or frequency == 'no_backups':
         return
 
+    # Pega raíz da pasta de backups
     root = os.path.join(os.path.dirname(db), 'backups')
 
+    # Cria raíz caso não exista
     if not os.path.exists(root):
         os.makedirs(root)
 
+    # Pega o arquivo de configuração da pasta de backup
     backup_config_path = os.path.join(root, 'config.json')
 
+    # Tenta coletar data do último backup e transforma em um objeto datetime
     try:
         with open(backup_config_path, 'r', encoding='utf8') as f:
             config = json.loads(f.read())
@@ -91,8 +101,10 @@ def do_backup(database: DatabaseConnection):
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError):
         last_backup = None
 
+    # Retona data atual
     today = datetime.today().date()
 
+    # Verifica se há necessidade de realizar o backup com base na configuração 'frequency'
     if last_backup:
         if frequency == 'diary':
             if last_backup == today:
@@ -104,28 +116,39 @@ def do_backup(database: DatabaseConnection):
             if last_backup.month == today.month:
                 return
     else:
-        last_backup = today.strftime('%Y-%m-%d')
+        last_backup = today
 
+    # Transforma datetime em string novamente
+    last_backup = last_backup.strftime('%Y-%m-%d')
+
+    # Pega o nome do mês e ano atual
     month_folder = os.path.join(root, f'{today.month:02d}-{today.year}')
 
+    # Cria pasta do mês caso não exista
     if not os.path.exists(month_folder):
         os.makedirs(month_folder)
 
+    # Pega dia atual
     day_folder = os.path.join(month_folder, str(today.day))
 
+    # Cria pasta do dia caso não exista
     if not os.path.exists(day_folder):
         os.makedirs(day_folder)
 
+    # Seta arquivo de saída e headers do backup
     filename = os.path.join(day_folder, 'history.csv')
     header = ['id', 'nfe', 'date', 'supplier', 'value']
 
+    # Realiza consulta na tabela 'history'
     query = database.read(
         table='history',
         fields=header
     )
 
+    # Cria backup em um arquivo .csv
     write_csv(filename, header, query)
 
+    # Repete o processo acima na tabela 'suppliers'
     filename = os.path.join(day_folder, 'suppliers.csv')
     header = ['id', 'supplier']
 
@@ -136,26 +159,38 @@ def do_backup(database: DatabaseConnection):
 
     write_csv(filename, header, query)
 
-    backups = [folder for folder in os.listdir(root) if os.path.isdir(os.path.join(root, folder))]
+    # Cria namedtuple para guardar dados do backup mais antigo
+    Oldest = namedtuple('OldestBackup', ['creation', 'fullname', 'parent'])
 
-    if len(backups) > int(max_backups):
-        Oldest = namedtuple('OldestBackup', ['creation', 'fullname', 'parent'])
-        oldest = Oldest(datetime.now(), '', '')
+    oldest = Oldest(datetime.now(), '', '')
+    backups_count = 0
 
-        for folder in backups:
-            month_fullname = os.path.join(root, folder)
+    # Itera sobra todos os arquivos na pasta de backups
+    for month_folder in os.listdir(root):
+        month_fullname = os.path.join(root, month_folder)
 
-            for f in os.listdir(month_fullname):
-                day_fullname = os.path.join(month_fullname, f)
-                creation_time = datetime.fromtimestamp(os.path.getctime(day_fullname))
+        # Caso não seja uma pasta, retorna
+        if not os.path.isdir(month_fullname):
+            continue
 
-                if creation_time < oldest.creation:
-                    oldest = Oldest(creation_time, day_fullname, month_fullname)
+        # Itera sobre cada pasta de backup na pasta do mês
+        for day_folder in os.listdir(month_fullname):
+            day_fullname = os.path.join(month_fullname, day_folder)
+            creation_time = datetime.fromtimestamp(os.path.getctime(day_fullname))
+            backups_count += 1
 
+            # Se a data de criação for menor que a data mais antiga atual, substitui
+            if creation_time < oldest.creation:
+                oldest = Oldest(creation_time, day_fullname, month_fullname)
+
+    # Caso a quantidade de backups seja maior que a configuração 'max_backups' remove o backup mais antigo
+    if backups_count > int(max_backups):
         shutil.rmtree(oldest.fullname)
 
+        # Caso a pasta do mês esteja vazia então remove-a
         if len(os.listdir(oldest.parent)) == 0:
             os.removedirs(oldest.parent)
 
+    # Salva data do último backup
     with open(backup_config_path, 'w', encoding='utf8') as f:
         f.write(json.dumps({"last_backup": last_backup}, indent=4))

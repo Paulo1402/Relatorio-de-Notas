@@ -51,13 +51,14 @@ def get_empty_fields(fields: list[QLineEdit | QComboBox]):
     return empty_fields
 
 
+# Retorna dia e mês atual
 def get_current_month_year():
     today = datetime.today()
 
     return today.month, today.year
 
 
-# Cria html dinamicamente de acordo com parâmetros
+# Cria html do relatório dinamicamente
 def create_html(data: dict):
     template = '''
     <!DOCTYPE html>

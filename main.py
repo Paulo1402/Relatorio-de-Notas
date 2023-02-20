@@ -1,7 +1,7 @@
 import sys
 import os
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView, QLabel
 from PyQt6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression
 from PyQt6.QtGui import QPageLayout, QIcon, QPageSize, QRegularExpressionValidator, QCloseEvent
 from PyQt6.QtPrintSupport import QPrinter
@@ -20,13 +20,7 @@ class App(QMainWindow, Ui_MainWindow):
         # Instancia variáveis
         self._ID: int | None = None
         self.model: TableModel | None = None
-
-        # Cria aliases para botões
-        self.yes = Message.StandardButton.Yes
-        self.no = Message.StandardButton.No
-
-        # Cria template popup
-        self.message = Message(self, [(self.yes, 'Sim'), (self.no, 'Não')])
+        self.status_message: QLabel | None = None
 
         # Abre conexão com o banco de dados
         self.database = DatabaseConnection()
@@ -34,6 +28,8 @@ class App(QMainWindow, Ui_MainWindow):
 
         # Inicialização
         self.init_ui()
+
+        # Realiza o backup
         do_backup(self.database)
 
         # Define a primeira página ao abrir o progrma
@@ -44,43 +40,34 @@ class App(QMainWindow, Ui_MainWindow):
         self.database.disconnect()
         a0.accept()
 
-    def show(self) -> None:
-        super().show()
-
-        if self.database.connection_state == DatabaseConnection.STATE.DATABASE_NOT_FOUND:
-            Message.critical(
-                self,
-                'CRÍTICO',
-                'Erro ao acessar banco de dados!\n'
-                'Se seu banco de dados estiver na rede verifique se há conexão com a internet.'
-            )
-        elif self.database.connection_state == DatabaseConnection.STATE.NO_DATABASE:
-            Message.warning(self, 'ATENÇÃO', 'Insira um banco de dados para usar o programa.')
-            self.action_config.trigger()
-
-        self.setup_data()
-
+    # ID encapsulado
     @property
     def ID(self):
         return self._ID
 
+    # Setter para automatizar ações ao alterar ID
     @ID.setter
     def ID(self, value):
         flag = bool(value + 1)
         message = f'Modo: Editar | ID: {value}' if flag else f'Modo: Registrar'
 
-        self.statusBar.showMessage(message)
+        self.status_message.setText(message)
         self.bt_delete.setDisabled(not flag)
         self.mp_main.setCurrentIndex(0)
         self.txt_nfe.setFocus()
 
         self._ID = value
 
+    # Inicia elementos
     def init_ui(self):
         # Conecta botões do menu nas páginas do stacked widget
         self.bt_register_menu.clicked.connect(lambda: self.registry_menu_clicked())
         self.bt_search_menu.clicked.connect(lambda: self.search_menu_clicked())
         self.bt_export_menu.clicked.connect(lambda: self.export_menu_clicked())
+
+        self.status_message = QLabel(self)
+        self.status_message.setStyleSheet("margin: 0px 0px 5px 5px;")
+        self.statusBar.addWidget(self.status_message)
 
         # Define icon, título e tamanho da janela
         self.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
@@ -120,16 +107,6 @@ class App(QMainWindow, Ui_MainWindow):
         self.action_years.triggered.connect(lambda: YearDialog(self, self.database).show())
         self.action_import_backup.triggered.connect(lambda: ImportBackupDialog(self, self.database).show())
 
-        # Carrega anos conforme os registros no banco de dados
-        years = get_years(self.database)
-        self.cb_year.clear()
-        self.cb_year.addItems(years)
-
-        # Seta ano e mês atual
-        current_month, current_year = get_current_month_year()
-        self.cb_month.setCurrentIndex(current_month - 1)
-        self.cb_year.setCurrentText(str(current_year))
-
         # Remove valor inicial do ComboBox e alinha ao centro
         self.cb_supplier.setCurrentIndex(-1)
         self.cb_supplier.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -154,8 +131,8 @@ class App(QMainWindow, Ui_MainWindow):
         # Define slots para os botões da página 'Exportar'
         self.bt_pdf.clicked.connect(self.export_pdf)
         self.bt_print.clicked.connect(self.print_report)
-        self.cb_month.currentIndexChanged.connect(lambda: self.create_report())
-        self.cb_year.currentIndexChanged.connect(lambda: self.create_report())
+        self.cb_month.currentIndexChanged.connect(self.create_report)
+        self.cb_year.currentIndexChanged.connect(self.create_report)
 
         # Seta validadores
         validator = QRegularExpressionValidator(
@@ -172,15 +149,39 @@ class App(QMainWindow, Ui_MainWindow):
         self.txt_nfe_search.setValidator(validator)
         self.txt_nfe.setValidator(validator)
 
-    def setup_data(self):
-        connected = self.database.connection_state == DatabaseConnection.STATE.CONNECTED
+    def start_app(self):
+        # Verifica conexão após iniciar janela principal
+        if self.database.connection_state == DatabaseConnection.State.DATABASE_NOT_FOUND:
+            Message.critical(
+                self,
+                'CRÍTICO',
+                'Erro ao acessar banco de dados!\n'
+                'Se seu banco de dados estiver na rede verifique se há conexão com a internet.'
+            )
+        elif self.database.connection_state == DatabaseConnection.State.NO_DATABASE:
+            Message.warning(self, 'ATENÇÃO', 'Insira um banco de dados para usar o programa.')
+            self.action_config.trigger()
 
+        # Configura dados
+        self.setup_data()
+
+        # Seta ano e mês atual
+        current_month, current_year = get_current_month_year()
+        self.cb_month.setCurrentIndex(current_month - 1)
+        self.cb_year.setCurrentText(str(current_year))
+
+    def setup_data(self):
+        # Verifica conexão
+        connected = self.database.connection_state == DatabaseConnection.State.CONNECTED
+
+        # Se não houver conexão desabiilita funções do aplicativo
         self.action_years.setDisabled(not connected)
         self.action_suppliers.setDisabled(not connected)
         self.mp_main.setDisabled(not connected)
 
         if connected:
             # Carrega dados para dentro do app
+            self.load_years()
             self.load_suppliers()
             self.create_report()
             self.search()
@@ -193,13 +194,13 @@ class App(QMainWindow, Ui_MainWindow):
     # Ativa página 'pesquisar'
     def search_menu_clicked(self):
         self.mp_main.setCurrentIndex(1)
-        self.statusBar.clearMessage()
+        self.status_message.setText('')
         self.txt_nfe_search.setFocus()
 
     # Ativa página 'exportar'
     def export_menu_clicked(self):
         self.mp_main.setCurrentIndex(2)
-        self.statusBar.clearMessage()
+        self.status_message.setText('')
 
     # Cria ou edita registro no banco de dados
     @check_connection
@@ -235,6 +236,8 @@ class App(QMainWindow, Ui_MainWindow):
             'value': from_currency_to_float(fields[3].text())
         }
 
+        message = 'Deseja editar esse registro no banco de dados?'
+
         # Caso ID seja -1 então estamos em modo de inserção
         if self.ID == -1:
             # Verifica se já existe um registro com a mesma nfe e fornecedor no banco de dados
@@ -253,19 +256,10 @@ class App(QMainWindow, Ui_MainWindow):
                 Message.warning(self, 'ATENÇÃO', 'Essa nota já foi registrada com esse fornecedor!')
                 return
 
-            message = 'Deseja inserir esse registro no banco de dados?'
-        else:
-            message = 'Deseja editar esse registro no banco de dados?'
+            message = message.replace('editar', 'inserir')
 
-        # Faz pergunta de seguraça ao usuário, caso não confirme aborta ação
-        answer = self.message.show_message(
-            'ATENÇÃO',
-            message,
-            Message.Icon.Warning,
-            default_button=self.yes
-        )
-
-        if answer == self.no:
+        # Faz pergunta de segurança ao usuário, caso não confirme aborta ação
+        if Message.warning_question(self, message, Message.YES) == Message.NO:
             return
 
         # Caso fornecedor não se encontre no banco de dados, o adiciona
@@ -275,21 +269,24 @@ class App(QMainWindow, Ui_MainWindow):
             self.database.create(table='suppliers', fields={'supplier': supplier})
             self.load_suppliers()
 
-        # Caso esteja em modo de inserção
-        if self.ID == -1:
-            self.database.create(table='history', fields=fields)
-            message = 'Registro inserido com sucesso.'
-        # Do contrário se trata de modo de edição
-        else:
-            self.database.update(table='history', fields=fields, id_record=self.ID)
-            message = 'Registro alterado com sucesso.'
+        try:
+            # Caso esteja em modo de inserção
+            if self.ID == -1:
+                self.database.create(table='history', fields=fields)
+                message = 'Registro inserido com sucesso.'
+            # Do contrário se trata de modo de edição
+            else:
+                self.database.update(table='history', fields=fields, id_record=self.ID)
+                message = 'Registro alterado com sucesso.'
 
-        # Prepara para novo registro e avisa usuário
-        Message.information(self, 'AVISO', message)
-        self.registry_menu_clicked()
+            # Prepara para novo registro e avisa usuário
+            Message.information(self, 'AVISO', message)
+            self.registry_menu_clicked()
 
-        # Faz nova pesquisa na página 'pesquisar'
-        self.search()
+            # Faz nova pesquisa na página 'pesquisar'
+            self.search()
+        except QueryError:
+            Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a operação!')
 
     # Limpa campos da página registro
     @check_connection
@@ -304,19 +301,12 @@ class App(QMainWindow, Ui_MainWindow):
     # Deleta registro
     @check_connection
     def delete_registry(self):
-        answer = self.message.show_message(
-            'ATENÇÃO',
-            'Deseja deletar esse registro no banco de dados?',
-            Message.Icon.Warning,
-            default_button=self.no
-        )
-
-        if answer == self.no:
+        if Message.warning_question(self, 'Deseja deletar esse registro no banco de dados?') == Message.NO:
             return
 
         # Deleta registro
         try:
-            self.database.delete(table='history', clause=f'WHERE id LIKE {self.ID}')
+            self.database.delete(table='history', clause=f'id LIKE {self.ID}')
 
             # Prepara para novo registro e avisa usuário
             Message.information(self, 'AVISO', 'Registro deletado com sucesso.')
@@ -377,14 +367,7 @@ class App(QMainWindow, Ui_MainWindow):
 
     # Exporta relatório em pdf
     def export_pdf(self):
-        answer = self.message.show_message(
-            'ATENÇÃO',
-            'Deseja exportar o relatório em pdf?',
-            Message.Icon.Question,
-            default_button=self.yes
-        )
-
-        if answer == self.no:
+        if Message.warning_question(self, 'Deseja exportar o relatório em pdf?', Message.YES) == Message.NO:
             return
 
         # Seta nome inicial e abre caixa de diálogo para usuário selecionar local para salvar
@@ -405,14 +388,7 @@ class App(QMainWindow, Ui_MainWindow):
 
     # Imprime relatório
     def print_report(self):
-        answer = self.message.show_message(
-            'ATENÇÃO',
-            'Deseja imprimir o relátorio?',
-            Message.Icon.Question,
-            default_button=self.yes
-        )
-
-        if answer == self.no:
+        if Message.warning_question(self, 'Deseja imprimir o relátorio?', Message.YES) == Message.NO:
             return
 
         # Imprime relatório e avisa usuário
@@ -442,6 +418,14 @@ class App(QMainWindow, Ui_MainWindow):
 
         # Entra em modo de edição
         self.ID = id_record
+
+    # Carrega anos armazenados
+    @check_connection
+    def load_years(self):
+        years = get_years(self.database)
+
+        self.cb_year.clear()
+        self.cb_year.addItems(years)
 
     # Carrega fornecedores
     @check_connection
@@ -550,5 +534,6 @@ if __name__ == "__main__":
 
     app = App()
     app.show()
+    app.start_app()
 
     sys.exit(qt.exec())

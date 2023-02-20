@@ -12,14 +12,16 @@ class QueryError(Exception):
         self.query = query
 
 
+# Estados de conexão com o banco de dados
 class DatabaseState(Enum):
     CONNECTED = 1
     NO_DATABASE = 2
     DATABASE_NOT_FOUND = 3
 
 
+# Classe reponsável por manter a conexão com o banco de dados
 class DatabaseConnection:
-    STATE: DatabaseState = DatabaseState
+    State: DatabaseState = DatabaseState
 
     def __init__(self):
         self._connection: QSqlDatabase | None = None
@@ -33,6 +35,7 @@ class DatabaseConnection:
     def connection(self):
         return self._connection
 
+    # Verifica se a localização do arquivo pode ser encontrada
     def check_location(self, path):
         if not path:
             self._connection_state = DatabaseState.NO_DATABASE
@@ -41,10 +44,12 @@ class DatabaseConnection:
         else:
             return True
 
+    # Tenta se conectar ao banco de dados
     def connect(self):
         config = get_config()
         db = config['database']
 
+        # Verifica se o banco de dados pode ser localizado
         if not self.check_location(db):
             self._connection = None
             return
@@ -57,11 +62,12 @@ class DatabaseConnection:
 
         self.create_tables()
 
+    # Desconecta conecão caso esteja conectada
     def disconnect(self):
         if self._connection:
             self._connection.close()
 
-    # Cria tabelas
+    # Cria tabelas caso não exista
     def create_tables(self):
         query = QSqlQuery(self._connection)
 
@@ -152,13 +158,16 @@ class DatabaseConnection:
             raise QueryError(f'Failed execution on query expression: {query.lastQuery()}')
 
     # Deleta registros em uma tabela
-    def delete(self, table: str, clause: str):
+    def delete(self, table: str, clause: str, force: bool = False):
+        if not clause and not force:
+            raise QueryError(f'Delete statement without WHERE clause')
+
         query = QSqlQuery(self._connection)
 
         query.prepare(
             f"""
             DELETE FROM {table}  
-            {clause}
+            WHERE {clause}
             """
         )
 

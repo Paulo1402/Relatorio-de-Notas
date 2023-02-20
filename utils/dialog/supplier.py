@@ -5,6 +5,7 @@ from services import DatabaseConnection
 from utils import Message, ListModel
 
 
+# Diálogo para deletar fornecedores do banco de dados
 class SupplierDialog(QDialog, Ui_Dialog):
     def __init__(self, parent, database: DatabaseConnection):
         super().__init__(parent)
@@ -22,6 +23,7 @@ class SupplierDialog(QDialog, Ui_Dialog):
 
         self.search()
 
+    # Filtra pelo nome do fornecedor
     def search(self):
         supplier = self.txt_supplier.text()
 
@@ -36,17 +38,21 @@ class SupplierDialog(QDialog, Ui_Dialog):
 
         self.model.setQuery(query)
 
+    # Deleta fornecedor
     def delete(self):
-        if Message.warning_question(
-                self,
-                'Deseja deletar TODOS os registros selecionados?\nNão é possível reverter essa decisão.'
-        ) == Message.StandardButton.No:
+        if Message.warning_question(self, 'Deseja deletar TODOS os registros selecionados?') == Message.NO:
             return
 
+        # Pega todos os índices selecionados
         indexes = self.list_suppliers.selectedIndexes()
 
+        # Para cada índice selecionado, deleta fornecedor
         for index in indexes:
-            self.database.delete(table='suppliers', clause=f'WHERE supplier LIKE "{index.data()}"')
+            supplier = index.data()
+            self.database.delete(table='suppliers', clause=f'supplier LIKE "{supplier}"')
 
         self.search()
-        self.parent().setup_data()
+
+        # Avisa usuário e recarrega dados dos fornecedores no aplicativo
+        Message.information(self, 'AVISO', 'Registros deletados com sucesso.')
+        self.parent().load_suppliers()

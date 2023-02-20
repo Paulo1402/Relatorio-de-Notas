@@ -6,6 +6,9 @@ from utils import from_currency_to_float, from_float_to_currency
 
 # Template de QMessageBox com captions personalizados para botões
 class Message(QMessageBox):
+    YES = QMessageBox.StandardButton.Yes
+    NO = QMessageBox.StandardButton.No
+
     def __init__(
             self,
             parent=None,
@@ -16,8 +19,9 @@ class Message(QMessageBox):
         if buttons:
             self.set_caption_buttons(buttons)
 
+    # Cria e executa uma message box de aviso com botões de Sim e Não
     @classmethod
-    def warning_question(cls, parent, message):
+    def warning_question(cls, parent, message: str, default_button=QMessageBox.StandardButton.No):
         buttons = [(QMessageBox.StandardButton.Yes, 'Sim'), (QMessageBox.StandardButton.No, 'Não')]
 
         self = cls(parent, buttons)
@@ -25,7 +29,7 @@ class Message(QMessageBox):
             'ATENÇÃO',
             message,
             QMessageBox.Icon.Warning,
-            QMessageBox.StandardButton.No
+            default_button
         )
 
         return answer
@@ -63,6 +67,7 @@ class CustomLineEdit(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+    # Formata para float ao receber o foco
     def focusInEvent(self, a0: QFocusEvent) -> None:
         value = from_currency_to_float(self.text())
         value = str(value).replace('.', ',')
@@ -70,6 +75,7 @@ class CustomLineEdit(QLineEdit):
 
         super().focusInEvent(a0)
 
+    # Formata para moeda ao perder o foco
     def focusOutEvent(self, a0: QFocusEvent) -> None:
         value = from_currency_to_float(self.text())
         value = from_float_to_currency(value)
