@@ -12,6 +12,7 @@ class ImportBackupDialog(QDialog, Ui_Dialog):
     def __init__(self, parent, database: DatabaseConnection):
         super().__init__(parent)
         self.setupUi(self)
+        self.setFixedSize(480, 115)
 
         self.database = database
 

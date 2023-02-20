@@ -10,6 +10,7 @@ class YearDialog(QDialog, Ui_Dialog):
     def __init__(self, parent, database: DatabaseConnection):
         super().__init__(parent)
         self.setupUi(self)
+        self.setFixedSize(160, 85)
 
         self.database = database
 

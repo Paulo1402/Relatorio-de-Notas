@@ -47,7 +47,7 @@ def delete_year(database: DatabaseConnection, year: str):
 # Checa conexão com banco de dados antes de executar uma função que requer conexão
 def check_connection(func):
     def inner(self, *_, **__):
-        if self.database.connection_state != DatabaseConnection.STATE.CONNECTED:
+        if self.database.connection_state != DatabaseConnection.State.CONNECTED:
             QMessageBox.critical(self, 'CRÍTICO', 'Sem conexão com o banco de dados!')
             return
 

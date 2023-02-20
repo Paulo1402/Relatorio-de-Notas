@@ -10,6 +10,7 @@ class SupplierDialog(QDialog, Ui_Dialog):
     def __init__(self, parent, database: DatabaseConnection):
         super().__init__(parent)
         self.setupUi(self)
+        self.setFixedSize(390, 305)
 
         self.database = database
 
@@ -40,11 +41,14 @@ class SupplierDialog(QDialog, Ui_Dialog):
 
     # Deleta fornecedor
     def delete(self):
-        if Message.warning_question(self, 'Deseja deletar TODOS os registros selecionados?') == Message.NO:
-            return
-
         # Pega todos os índices selecionados
         indexes = self.list_suppliers.selectedIndexes()
+
+        if not indexes:
+            return
+
+        if Message.warning_question(self, 'Deseja deletar TODOS os registros selecionados?') == Message.NO:
+            return
 
         # Para cada índice selecionado, deleta fornecedor
         for index in indexes:

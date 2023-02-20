@@ -59,6 +59,9 @@
          <bold>false</bold>
         </font>
        </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
        <property name="text">
         <string>NOVO BANCO</string>
        </property>
@@ -80,6 +83,9 @@
         <font>
          <bold>false</bold>
         </font>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="text">
         <string>BANCO EXISTENTE</string>

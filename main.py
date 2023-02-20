@@ -72,7 +72,7 @@ class App(QMainWindow, Ui_MainWindow):
         # Define icon, título e tamanho da janela
         self.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
         self.setWindowTitle('Relatório de Notas')
-        self.setFixedSize(785, 560)
+        self.setFixedSize(850, 560)
 
         # Define atalho ao clicar na tecla ENTER na tela de pesquisa
         self.bt_search.setShortcut('Return')
@@ -165,10 +165,17 @@ class App(QMainWindow, Ui_MainWindow):
         # Configura dados
         self.setup_data()
 
-        # Seta ano e mês atual
+        # Retorna ano e mês atual
         current_month, current_year = get_current_month_year()
+
+        # Bloqueia eventos para inserir o mês atual
+        self.cb_month.blockSignals(True)
         self.cb_month.setCurrentIndex(current_month - 1)
-        self.cb_year.setCurrentText(str(current_year))
+        self.cb_month.blockSignals(False)
+
+        # Insere ano atual pelo índice
+        index = self.cb_year.findText(str(current_year))
+        self.cb_year.setCurrentIndex(index)
 
     def setup_data(self):
         # Verifica conexão
@@ -177,6 +184,7 @@ class App(QMainWindow, Ui_MainWindow):
         # Se não houver conexão desabiilita funções do aplicativo
         self.action_years.setDisabled(not connected)
         self.action_suppliers.setDisabled(not connected)
+        self.action_import_backup.setDisabled(not connected)
         self.mp_main.setDisabled(not connected)
 
         if connected:
@@ -289,7 +297,6 @@ class App(QMainWindow, Ui_MainWindow):
             Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a operação!')
 
     # Limpa campos da página registro
-    @check_connection
     def clear_registry(self):
         self.txt_nfe.clear()
         self.txt_date.clear()
@@ -318,7 +325,6 @@ class App(QMainWindow, Ui_MainWindow):
             Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a operação!')
 
     # Limpa campos da página de pesquisa
-    @check_connection
     def clear_search(self):
         self.txt_nfe_search.clear()
         self.txt_supplier_search.clear()
@@ -506,6 +512,7 @@ def exception_hook(exctype, value, traceback):
 
 # Inicia o aplicativo
 if __name__ == "__main__":
+
     # Altera id do aplicativo para evitar bugs com o ícone na barra de tarefas
     try:
         # noinspection PyUnresolvedReferences
@@ -516,13 +523,6 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    # Vincula hook personalizado para receber logs durante desenvolvimento
-    sys.excepthook = exception_hook
-
-    qt = QApplication(sys.argv)
-    qt.setStyle('Fusion')
-    qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
-
     # Desativa splash do pyinstaller quando a aplicação carregar
     try:
         # noinspection PyUnresolvedReferences
@@ -531,6 +531,13 @@ if __name__ == "__main__":
         pyi_splash.close()
     except ModuleNotFoundError:
         pass
+
+    # Vincula hook personalizado para receber logs durante desenvolvimento
+    sys.excepthook = exception_hook
+
+    qt = QApplication(sys.argv)
+    qt.setStyle('Fusion')
+    qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
 
     app = App()
     app.show()

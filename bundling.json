@@ -38,6 +38,10 @@
    "value": true
   },
   {
+   "optionDest": "splash",
+   "value": "C:/Users/User/OneDrive/Programa\u00e7\u00e3o/Python/Projetos/Relat\u00f3rio Notas/assets/splash.png"
+  },
+  {
    "optionDest": "strip",
    "value": false
   },
@@ -80,30 +84,6 @@
   {
    "optionDest": "datas",
    "value": "C:/Users/User/OneDrive/Programa\u00e7\u00e3o/Python/Projetos/Relat\u00f3rio Notas/assets;assets/"
-  },
-  {
-   "optionDest": "datas",
-   "value": "C:/Users/User/OneDrive/Programa\u00e7\u00e3o/Python/Projetos/Relat\u00f3rio Notas/database/db.sqlite;database/"
-  },
-  {
-   "optionDest": "hiddenimports",
-   "value": "utils.model.Model"
-  },
-  {
-   "optionDest": "hiddenimports",
-   "value": "utils.model.Message"
-  },
-  {
-   "optionDest": "hiddenimports",
-   "value": "utils.model.Calendar"
-  },
-  {
-   "optionDest": "hiddenimports",
-   "value": "utils.*"
-  },
-  {
-   "optionDest": "hiddenimports",
-   "value": "services.*"
   }
  ],
  "nonPyinstallerOptions": {
