@@ -137,7 +137,7 @@ def do_backup(database: DatabaseConnection):
 
     # Seta arquivo de saída e headers do backup
     filename = os.path.join(day_folder, 'history.csv')
-    header = ['id', 'nfe', 'date', 'supplier', 'value']
+    header = ['nfe', 'date', 'supplier', 'value']
 
     # Realiza consulta na tabela 'history'
     query = database.read(
@@ -150,7 +150,7 @@ def do_backup(database: DatabaseConnection):
 
     # Repete o processo acima na tabela 'suppliers'
     filename = os.path.join(day_folder, 'suppliers.csv')
-    header = ['id', 'supplier']
+    header = ['supplier']
 
     query = database.read(
         table='suppliers',

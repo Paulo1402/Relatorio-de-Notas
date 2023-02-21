@@ -344,3 +344,4 @@ output/
 *.exe
 *.ifp
 .idea/
+database/*
