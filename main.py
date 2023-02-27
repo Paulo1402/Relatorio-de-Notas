@@ -163,9 +163,6 @@ class App(QMainWindow, Ui_MainWindow):
             Message.warning(self, 'ATENÇÃO', 'Insira um banco de dados para usar o programa.')
             self.action_config.trigger()
 
-        # Configura dados
-        self.setup_data()
-
         # Retorna ano e mês atual
         current_month, current_year = get_current_month_year()
 
@@ -177,6 +174,9 @@ class App(QMainWindow, Ui_MainWindow):
         # Insere ano atual pelo índice
         index = self.cb_year.findText(str(current_year))
         self.cb_year.setCurrentIndex(index)
+
+        # Configura dados
+        self.setup_data()
 
     def setup_data(self):
         # Verifica conexão

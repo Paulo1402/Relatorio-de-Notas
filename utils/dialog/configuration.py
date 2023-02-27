@@ -76,12 +76,15 @@ class ConfigurationDialog(QDialog, Ui_Dialog):
                 'max_backups': max_backups
             }
         }
+
         set_config(config)
 
         # Caso haja alterações no caminho do banco de dados restabelece a conexão e recarrega dados
         if path != self.database_path:
             self.database.connect()
             self.parent().setup_data()
+
+        a0.accept()
 
     # Abre caixa de diálogo para criar um arquivo
     def new_file(self):

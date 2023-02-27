@@ -22,16 +22,15 @@ def get_config():
             except (KeyError, ValueError):
                 raise json.JSONDecodeError
     except (FileNotFoundError, json.JSONDecodeError):
-        with open(path, 'w', encoding='utf8') as f:
-            config = {
-                'database': None,
-                'backup': {
-                    'frequency': 'weekly',
-                    'max_backups': 5
-                }
+        config = {
+            'database': None,
+            'backup': {
+                'frequency': 'weekly',
+                'max_backups': 5
             }
+        }
 
-            f.write(json.dumps(config, indent=4))
+        set_config(config)
 
     return config
 
@@ -40,5 +39,5 @@ def get_config():
 def set_config(config: dict):
     path = os.path.join(BASEDIR, 'config.json')
 
-    with open(path, 'w', encoding='utf8') as f:
+    with open(os.open(path, os.O_RDWR), 'w', encoding='utf8') as f:
         f.write(json.dumps(config, indent=4))
