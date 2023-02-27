@@ -30,7 +30,7 @@ class ListModel(QSqlQueryModel):
     def data(self, item: QModelIndex, role: int = ...):
         # Alinha todos objetos ao centro
         # if role == Qt.ItemDataRole.TextAlignmentRole:
-        #     return Qt.AlignmentFlag.AlignCenter
+        #     return Qt.AlignmentFlag.AlignLeft
 
         if role == Qt.ItemDataRole.DisplayRole:
             return super().data(item, role)

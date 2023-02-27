@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(477, 113)
+        Dialog.resize(477, 116)
         self.gridLayout = QtWidgets.QGridLayout(Dialog)
         self.gridLayout.setObjectName("gridLayout")
         self.bt_open = QtWidgets.QPushButton(parent=Dialog)
@@ -47,13 +47,14 @@ class Ui_Dialog(object):
         self.txt_source.setObjectName("txt_source")
         self.gridLayout.addWidget(self.txt_source, 1, 1, 1, 1)
         self.bt_import = QtWidgets.QPushButton(parent=Dialog)
+        self.bt_import.setMinimumSize(QtCore.QSize(0, 40))
         self.bt_import.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.bt_import.setStyleSheet("margin-top: 3px\n"
 "")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(".\\ui\\../assets/backup-48.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         self.bt_import.setIcon(icon1)
-        self.bt_import.setIconSize(QtCore.QSize(32, 32))
+        self.bt_import.setIconSize(QtCore.QSize(30, 30))
         self.bt_import.setObjectName("bt_import")
         self.gridLayout.addWidget(self.bt_import, 3, 0, 1, 3)
 

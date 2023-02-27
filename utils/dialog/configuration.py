@@ -8,12 +8,12 @@ from utils import set_config, get_config
 
 # Diálogo para configurar banco de dados
 class ConfigurationDialog(QDialog, Ui_Dialog):
-    def __init__(self, parent, dabase: DatabaseConnection):
+    def __init__(self, parent, database: DatabaseConnection):
         super().__init__(parent)
         self.setupUi(self)
         self.setFixedSize(600, 270)
 
-        self.database = dabase
+        self.database = database
 
         self.frequency_radios = {
             'no_backups': self.radio_no_backup,

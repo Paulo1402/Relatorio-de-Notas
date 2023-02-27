@@ -109,8 +109,6 @@ class DatabaseConnection:
         if not query.exec():
             raise QueryError(f'Failed execution on query expression: {query.lastQuery()}')
 
-        query.exec()
-
     # Lê registros em uma tabela e retorna o objeto com os resultados
     def read(self, table: str, fields: list[str], where: dict | None = None):
         query = QSqlQuery(self._connection)
@@ -167,7 +165,7 @@ class DatabaseConnection:
         query.prepare(
             f"""
             DELETE FROM {table}  
-            WHERE {clause}
+            {clause}
             """
         )
 

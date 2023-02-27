@@ -1,5 +1,6 @@
 import sys
 import os
+import logging
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView, QLabel
 from PyQt6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression
@@ -213,6 +214,7 @@ class App(QMainWindow, Ui_MainWindow):
     # Cria ou edita registro no banco de dados
     @check_connection
     def save_registry(self):
+        print('save_registry')
         fields = [
             self.txt_nfe,
             self.txt_date,
@@ -313,7 +315,7 @@ class App(QMainWindow, Ui_MainWindow):
 
         # Deleta registro
         try:
-            self.database.delete(table='history', clause=f'id LIKE {self.ID}')
+            self.database.delete(table='history', clause=f'WHERE id LIKE {self.ID}')
 
             # Prepara para novo registro e avisa usuário
             Message.information(self, 'AVISO', 'Registro deletado com sucesso.')
@@ -428,10 +430,13 @@ class App(QMainWindow, Ui_MainWindow):
     # Carrega anos armazenados
     @check_connection
     def load_years(self):
-        years = get_years(self.database)
+        self.cb_year.blockSignals(True)
 
+        years = get_years(self.database)
         self.cb_year.clear()
         self.cb_year.addItems(years)
+
+        self.cb_year.blockSignals(False)
 
     # Carrega fornecedores
     @check_connection
@@ -535,12 +540,20 @@ if __name__ == "__main__":
     # Vincula hook personalizado para receber logs durante desenvolvimento
     sys.excepthook = exception_hook
 
-    qt = QApplication(sys.argv)
-    qt.setStyle('Fusion')
-    qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
+    try:
+        qt = QApplication(sys.argv)
+        qt.setStyle('Fusion')
+        qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
 
-    app = App()
-    app.show()
-    app.start_app()
+        app = App()
+        app.show()
+        app.start_app()
 
-    sys.exit(qt.exec())
+        sys.exit(qt.exec())
+    except Exception as e:
+        logging.basicConfig(
+            filename=os.path.join(BASEDIR, 'logging.log'),
+            format='%(levelname)s | %(asctime)s - %(message)s'
+        )
+
+        logging.critical(f'{e.__class__.__name__} - {e}')

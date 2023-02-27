@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import QDialog
+from PyQt6.QtSql import QSqlQueryModel
 
 from ui.SupplierDialog import Ui_Dialog
 from services import DatabaseConnection
@@ -53,7 +54,7 @@ class SupplierDialog(QDialog, Ui_Dialog):
         # Para cada índice selecionado, deleta fornecedor
         for index in indexes:
             supplier = index.data()
-            self.database.delete(table='suppliers', clause=f'supplier LIKE "{supplier}"')
+            self.database.delete(table='suppliers', clause=f'WHERE supplier LIKE "{supplier}"')
 
         self.search()
 

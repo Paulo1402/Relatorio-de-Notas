@@ -48,7 +48,7 @@ class ImportBackupDialog(QDialog, Ui_Dialog):
         self.database.delete(table=table, clause='', force=True)
 
         # Recupera dados do backup
-        with open(source, 'r', encoding='latin') as f:
+        with open(source, 'r', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=';')
 
             header_flag = True
@@ -69,5 +69,5 @@ class ImportBackupDialog(QDialog, Ui_Dialog):
                 )
 
         # Notifica usuário e recarrega dados no aplicativo
-        Message.information(self, 'AVISO', f'Backup da tabela {table} importada com sucesso.')
+        Message.information(self, 'AVISO', f'Backup da tabela {table} importado com sucesso.')
         self.parent().setup_data()

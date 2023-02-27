@@ -192,5 +192,5 @@ def do_backup(database: DatabaseConnection):
             os.removedirs(oldest.parent)
 
     # Salva data do último backup
-    with open(backup_config_path, 'w', encoding='utf8') as f:
+    with open(backup_config_path, 'w', encoding='latin') as f:
         f.write(json.dumps({"last_backup": last_backup}, indent=4))

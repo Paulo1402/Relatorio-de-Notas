@@ -6,7 +6,7 @@ from utils import parse_date, from_currency_to_float
 
 if __name__ == '__main__':
     from services import DatabaseConnection
-    
+
     database = DatabaseConnection()
     database.connect()
 
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     )
 
     # Faz a modelagem dos dados de um arquivo .csv para inserir na tabela
-    with open('history.csv') as f:
+    with open('history.csv', 'r', encoding='latin') as f:
         csvreader = csv.reader(f, delimiter=';')
         header = True
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         """
     )
 
-    with open('suppliers.csv') as f:
+    with open('suppliers.csv', 'r', encoding='latin') as f:
         csvreader = csv.reader(f, delimiter=';')
         header = True
 
