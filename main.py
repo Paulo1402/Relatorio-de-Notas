@@ -5,11 +5,26 @@ import logging
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView, QLabel
 from PyQt6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression
 from PyQt6.QtGui import QPageLayout, QIcon, QPageSize, QRegularExpressionValidator, QCloseEvent
-from PyQt6.QtPrintSupport import QPrinter
+from PyQt6.QtPrintSupport import QPrinter, QPrintDialog, QPrinterInfo
 
 from ui.MainWindow import Ui_MainWindow
 from utils import *
 from services import *
+
+# todo Usar third party lib pra imprimir pdf
+
+"""
+    possible solution is to use PDFtoPrinter.exe
+    http://www.columbia.edu/~em36/pdftoprinter.html?fbclid=IwAR1kRJ8oWyduJ_HreuBMdQEIUlUZWYCJFzN8yVGUITmXXd6ei74kVwusSDE
+    
+    import subprocess
+
+    def command_print(event = None):
+        command = "{} {}".format('PDFtoPrinter.exe','report.pdf')
+        subprocess.call(command,shell=True)
+    
+    command_print()
+"""
 
 
 # Janela principal
@@ -22,6 +37,7 @@ class App(QMainWindow, Ui_MainWindow):
         self._ID: int | None = None
         self.model: TableModel | None = None
         self.status_message: QLabel | None = None
+        self.printer: QPrinter | None = None
 
         # Abre conexão com o banco de dados
         self.database = DatabaseConnection()
@@ -214,7 +230,6 @@ class App(QMainWindow, Ui_MainWindow):
     # Cria ou edita registro no banco de dados
     @check_connection
     def save_registry(self):
-        print('save_registry')
         fields = [
             self.txt_nfe,
             self.txt_date,
@@ -382,15 +397,15 @@ class App(QMainWindow, Ui_MainWindow):
         inicial_name = f'RELATÓRIO DE NOTAS {self.cb_month.currentText()} DE {self.cb_year.currentText()}'
         path = QFileDialog.getSaveFileName(self.centralwidget, 'Salvar em PDF.', inicial_name, 'pdf (*.pdf)')[0]
 
-        # Configura layout
-        layout = QPageLayout(
-            QPageSize(QPageSize.PageSizeId.A4),
-            QPageLayout.Orientation.Portrait,
-            QMarginsF(0, 20, 0, 20)
-        )
-
         # Caso usuário selecione um local, salva em pdf e informa usuário
         if path:
+            # Configura layout
+            layout = QPageLayout(
+                QPageSize(QPageSize.PageSizeId.A4),
+                QPageLayout.Orientation.Portrait,
+                QMarginsF(0, 20, 0, 20)
+            )
+
             self.web_view.printToPdf(path, layout)
             Message.information(self, 'AVISO', 'Relatório exportado!')
 
@@ -399,12 +414,32 @@ class App(QMainWindow, Ui_MainWindow):
         if Message.warning_question(self, 'Deseja imprimir o relátorio?', Message.YES) == Message.NO:
             return
 
-        # Imprime relatório e avisa usuário
-        printer = QPrinter()
-        printer.setPageMargins(QMarginsF(0, 20, 0, 20))
-        self.web_view.print(printer)
+        self.printer = QPrinter()
+        dialog = QPrintDialog(self.printer, self)
 
-        Message.information(self, 'AVISO', 'Relatório impresso!')
+        if dialog.exec() == QPrintDialog.DialogCode.Rejected:
+            return
+
+        # Configura layout
+        # layout = QPageLayout(
+        #     QPageSize(QPageSize.PageSizeId.A4),
+        #     QPageLayout.Orientation.Portrait,
+        #     QMarginsF(0, 50, 0, 50)
+        # )
+
+        # self.printer.setPageLayout(layout)
+
+        self.printer.setResolution(QPrinter.PrinterMode.HighResolution)
+
+        self.web_view.printFinished.connect(self.finished_printing)
+        self.web_view.print(self.printer)
+
+    def finished_printing(self, success: bool):
+        if success:
+            Message.information(self, 'AVISO', 'Relatório impresso!')
+        else:
+            Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a impressão, se a impressora está na rede '
+                                              'verifique a conexão, por favor.')
 
     # Traz dados da QTableView para a página de registro
     def history_record_selected(self, index: QModelIndex | int):
@@ -539,6 +574,16 @@ if __name__ == "__main__":
 
     # Vincula hook personalizado para receber logs durante desenvolvimento
     sys.excepthook = exception_hook
+
+    # qt = QApplication(sys.argv)
+    # qt.setStyle('Fusion')
+    # qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
+    #
+    # app = App()
+    # app.show()
+    # app.start_app()
+    #
+    # sys.exit(qt.exec())
 
     try:
         qt = QApplication(sys.argv)

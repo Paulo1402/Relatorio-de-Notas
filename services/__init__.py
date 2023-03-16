@@ -97,7 +97,7 @@ def do_backup(database: DatabaseConnection):
             config = json.loads(f.read())
 
             last_backup = config['last_backup']
-            last_backup = datetime.strptime(last_backup, '%Y-%m-%d')
+            last_backup = datetime.strptime(last_backup, '%Y-%m-%d').date()
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError):
         last_backup = None
 
@@ -105,21 +105,19 @@ def do_backup(database: DatabaseConnection):
     today = datetime.today().date()
 
     # Verifica se há necessidade de realizar o backup com base na configuração 'frequency'
-    if last_backup:
-        if frequency == 'diary':
-            if last_backup == today:
+    match frequency:
+        case 'diary':
+            if last_backup and last_backup == today:
                 return
-        elif frequency == 'weekly':
-            if last_backup.isocalendar().week == today.isocalendar().week:
+        case 'weekly':
+            if last_backup and last_backup.isocalendar().week == today.isocalendar().week:
                 return
-        else:
-            if last_backup.month == today.month:
+        case 'monthly':
+            if last_backup and last_backup.month == today.month:
                 return
-    else:
-        last_backup = today
 
-    # Transforma datetime em string novamente
-    last_backup = last_backup.strftime('%Y-%m-%d')
+    # Define último backup como o dia atual
+    last_backup = today.strftime('%Y-%m-%d')
 
     # Pega o nome do mês e ano atual
     month_folder = os.path.join(root, f'{today.month:02d}-{today.year}')

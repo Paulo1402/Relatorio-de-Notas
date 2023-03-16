@@ -39,5 +39,8 @@ def get_config():
 def set_config(config: dict):
     path = os.path.join(BASEDIR, 'config.json')
 
+    with open(path, 'w'):
+        pass
+
     with open(os.open(path, os.O_RDWR), 'w', encoding='utf8') as f:
         f.write(json.dumps(config, indent=4))

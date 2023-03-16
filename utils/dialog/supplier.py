@@ -1,5 +1,4 @@
 from PyQt6.QtWidgets import QDialog
-from PyQt6.QtSql import QSqlQueryModel
 
 from ui.SupplierDialog import Ui_Dialog
 from services import DatabaseConnection
