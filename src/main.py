@@ -429,7 +429,7 @@ class App(QMainWindow, Ui_MainWindow):
 
         # self.printer.setPageLayout(layout)
 
-        self.printer.setResolution(QPrinter.PrinterMode.HighResolution)
+        # self.printer.setResolution(QPrinter.PrinterMode.HighResolution)
 
         self.web_view.printFinished.connect(self.finished_printing)
         self.web_view.print(self.printer)
