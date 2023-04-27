@@ -1,36 +1,47 @@
-from PyQt6.QtSql import QSqlQueryModel
-from PyQt6.QtCore import QModelIndex, Qt
+"""Custom models para manipular exibição de dados."""
 
-from utils import parse_date, from_float_to_currency
+from PySide6.QtSql import QSqlQueryModel
+from PySide6.QtCore import QModelIndex, Qt
+
+from . import parse_date, from_float_to_currency
 
 
-# Model personalizado para tratar dados antes de adicionar a QTableView
 class TableModel(QSqlQueryModel):
+    """Model para tratar dados antes de adicionar a QTableView"""
+
+    def __init__(self, date_fields: list | None = None, currency_fields: list | None = None):
+        super().__init__()
+
+        self.date_fields = date_fields
+        self.currency_fields = currency_fields
+
     def data(self, item: QModelIndex, role: int = ...):
         # Retorna valor original
         value = super().data(item, role)
 
-        # Alinha todos objetos ao centro
+        # Alinha todos os objetos ao centro
         if role == Qt.ItemDataRole.TextAlignmentRole:
             return Qt.AlignmentFlag.AlignCenter
 
         if role == Qt.ItemDataRole.DisplayRole:
             # Caso seja coluna de datas, formata o valor para data brasileira
-            if item.column() == 2:
+            if self.date_fields and item.column() in self.date_fields:
                 return parse_date(value, input_format='%Y-%m-%d', output_format='%d/%m/%Y')
 
-            # Caso seja coluna de valor, formata o valor para moeda brasileira
-            if item.column() == 4:
-                return from_float_to_currency(value)
+            # Caso seja coluna de moeda, formata valor para moeda
+            if self.currency_fields and item.column() in self.currency_fields:
+                return from_float_to_currency(value, symbol=False)
 
             return value
 
 
 class ListModel(QSqlQueryModel):
+    """Model para tratar dados antes de adicionar a QTableView."""
+
     def data(self, item: QModelIndex, role: int = ...):
-        # Alinha todos objetos ao centro
-        # if role == Qt.ItemDataRole.TextAlignmentRole:
-        #     return Qt.AlignmentFlag.AlignLeft
+        # Alinha todos os objetos ao centro
+        if role == Qt.ItemDataRole.TextAlignmentRole:
+            return Qt.AlignmentFlag.AlignCenter
 
         if role == Qt.ItemDataRole.DisplayRole:
             return super().data(item, role)

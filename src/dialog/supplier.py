@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import QDialog
+from PySide6.QtWidgets import QDialog
 
 from ui.SupplierDialog import Ui_Dialog
-from services import DatabaseConnection
 from utils import Message, ListModel
+from services import DatabaseConnection
 
 
 # Diálogo para deletar fornecedores do banco de dados
@@ -31,10 +31,8 @@ class SupplierDialog(QDialog, Ui_Dialog):
         query = self.database.read(
             table='suppliers',
             fields=['supplier'],
-            where={
-                'clause': "WHERE supplier LIKE '%' || ? ||  '%' ORDER BY supplier",
-                'values': [supplier]
-            }
+            clause="WHERE supplier LIKE  '%' || ? ||  '%' ORDER BY supplier",
+            values=[supplier]
         )
 
         self.model.setQuery(query)

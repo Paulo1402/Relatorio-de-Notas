@@ -51,8 +51,8 @@
       <string>DELETAR</string>
      </property>
      <property name="icon">
-      <iconset>
-       <normaloff>../assets/delete-48.png</normaloff>../assets/delete-48.png</iconset>
+      <iconset resource="resource.qrc">
+       <normaloff>:/icons/assets/delete-48.png</normaloff>:/icons/assets/delete-48.png</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -84,8 +84,8 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset>
-       <normaloff>../assets/search-48.png</normaloff>../assets/search-48.png</iconset>
+      <iconset resource="resource.qrc">
+       <normaloff>:/icons/assets/search-48.png</normaloff>:/icons/assets/search-48.png</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -121,6 +121,8 @@
   <tabstop>bt_search</tabstop>
   <tabstop>list_suppliers</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="resource.qrc"/>
+ </resources>
  <connections/>
 </ui>

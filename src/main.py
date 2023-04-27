@@ -1,17 +1,38 @@
-import sys
-import os
-import logging
+"""
+Ponto de entrada do programa.
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView, QLabel
-from PyQt6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression
-from PyQt6.QtGui import QPageLayout, QIcon, QPageSize, QRegularExpressionValidator, QCloseEvent
-from PyQt6.QtPrintSupport import QPrinter, QPrintDialog, QPrinterInfo
+Esse arquivo é compilado usando a lib PyInstaller para gerar um executável para distribuição.
+"""
+import sys
+import warnings
+import locale
+
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView, QLabel, QProgressBar
+from PySide6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression, Slot
+from PySide6.QtGui import QPageLayout, QIcon, QPageSize, QRegularExpressionValidator, QCloseEvent, QAction
+from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from ui.MainWindow import Ui_MainWindow
-from utils import *
 from services import *
+from utils import *
+from dialog import *
 
-# todo Usar third party lib pra imprimir pdf
+# todo FrontEnd
+#   Adicionar dark / light mode
+#   Adicionar efeitos CSS
+#   Adicionar fixup no campo de data
+#   Adicionar auto format no campo de valor
+
+# todo BackEnd
+#   Usar PDFtoPrinter.exe para imprimir relatório, é possível exportar em PDF na pasta temp para depois imprimir
+
+# todo Refactoring
+#   Restruturar projeto para o novo formato (Se basear no projeto Controle de Estoque)
+#   Atualizar bindings para usar PySide6
+
+# todo Testes
+
+# todo Bugs
 
 """
     possible solution is to use PDFtoPrinter.exe
@@ -28,177 +49,171 @@ from services import *
 
 
 # Janela principal
-class App(QMainWindow, Ui_MainWindow):
+class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
 
         # Instancia variáveis
-        self._ID: int | None = None
         self.model: TableModel | None = None
-        self.status_message: QLabel | None = None
         self.printer: QPrinter | None = None
+
+        self._ID = -1
 
         # Abre conexão com o banco de dados
         self.database = DatabaseConnection()
         self.database.connect()
 
+        # Cria widgets de backup
+        self.backup_bar = QProgressBar()
+        self.backup_label = QLabel('Realizando backup...')
+        self.backup_worker: DoBackupWorker | None = None
+
         # Inicialização
         self.init_ui()
 
-        # Realiza o backup
-        do_backup(self.database)
-
-        # Define a primeira página ao abrir o progrma
-        self.registry_menu_clicked()
-
-    # Fecha conexão com banco de dados ao fechar o aplicativo
-    def closeEvent(self, a0: QCloseEvent) -> None:
-        self.database.disconnect()
-        a0.accept()
-
-    # ID encapsulado
     @property
     def ID(self):
         return self._ID
 
-    # Setter para automatizar ações ao alterar ID
     @ID.setter
-    def ID(self, value):
+    def ID(self, value: int):
+        """Setter para automatizar ações ao alterar ID."""
+        self._ID = value
         flag = bool(value + 1)
-        message = f'Modo: Editar | ID: {value}' if flag else f'Modo: Registrar'
 
-        self.status_message.setText(message)
         self.bt_delete.setDisabled(not flag)
         self.mp_main.setCurrentIndex(0)
         self.txt_nfe.setFocus()
 
-        self._ID = value
+        self.handle_status_message(value)
 
-    # Inicia elementos
-    def init_ui(self):
-        # Conecta botões do menu nas páginas do stacked widget
-        self.bt_register_menu.clicked.connect(lambda: self.registry_menu_clicked())
-        self.bt_search_menu.clicked.connect(lambda: self.search_menu_clicked())
-        self.bt_export_menu.clicked.connect(lambda: self.export_menu_clicked())
+    def closeEvent(self, event: QCloseEvent):
+        """Disparado quando a janela é fechada"""
+        if Message.warning_question(self, 'Deseja fechar o aplicativo?') == Message.NO:
+            event.ignore()
+            return
 
-        self.status_message = QLabel(self)
-        self.status_message.setStyleSheet("margin: 0px 0px 5px 5px;")
-        self.statusBar.addWidget(self.status_message)
+        self.database.disconnect()
+        event.accept()
 
-        # Define icon, título e tamanho da janela
-        self.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
-        self.setWindowTitle('Relatório de Notas')
-        self.setFixedSize(850, 560)
+    def show(self):
+        """Inicia janela principal."""
+        super().show()
 
-        # Define atalho ao clicar na tecla ENTER na tela de pesquisa
-        self.bt_search.setShortcut('Return')
-
-        # Configura web view
-        self.web_view.setZoomFactor(0.8)
-        self.web_view.setHtml('')
-
-        # Popula Month ComboBox
-        self.cb_month.addItems([
-            'JANEIRO',
-            'FEVEREIRO',
-            'MARÇO',
-            'ABRIL',
-            'MAIO',
-            'JUNHO',
-            'JULHO',
-            'AGOSTO',
-            'SETEMBRO',
-            'OUTUBRO',
-            'NOVEMBRO',
-            'DEZEMBRO'
-        ])
-
-        # Seta model para list view e faz pesquisa
-        self.model = TableModel()
-        self.table_search.setModel(self.model)
-
-        # Seta botões do menu
-        self.action_config.triggered.connect(lambda: ConfigurationDialog(self, self.database).show())
-        self.action_suppliers.triggered.connect(lambda: SupplierDialog(self, self.database).show())
-        self.action_years.triggered.connect(lambda: YearDialog(self, self.database).show())
-        self.action_import_backup.triggered.connect(lambda: ImportBackupDialog(self, self.database).show())
-
-        # Remove valor inicial do ComboBox e alinha ao centro
-        self.cb_supplier.setCurrentIndex(-1)
-        self.cb_supplier.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Define slots para os botões da página 'Registrar'
-        self.bt_save.clicked.connect(self.save_registry)
-        self.bt_clear.clicked.connect(self.clear_registry)
-        self.bt_delete.clicked.connect(self.delete_registry)
-        self.bt_calendar_date.clicked.connect(lambda: CalendarDialog(self, self.txt_date, 'Data').show())
-
-        # Define slots para os botões da página 'Pesquisar'
-        self.bt_clear_search.clicked.connect(self.clear_search)
-        self.bt_search.clicked.connect(self.search)
-        self.bt_calendar_start_date.clicked.connect(
-            lambda: CalendarDialog(self, self.txt_start_date, 'Data Inicial').show())
-        self.bt_calendar_end_date.clicked.connect(lambda: CalendarDialog(self, self.txt_end_date, 'Data Final').show())
-
-        # Define slots para o evento de double click na table view
-        self.table_search.doubleClicked.connect(self.history_record_selected)
-        self.table_search.verticalHeader().sectionDoubleClicked.connect(self.history_record_selected)
-
-        # Define slots para os botões da página 'Exportar'
-        self.bt_pdf.clicked.connect(self.export_pdf)
-        self.bt_print.clicked.connect(self.print_report)
-        self.cb_month.currentIndexChanged.connect(self.create_report)
-        self.cb_year.currentIndexChanged.connect(self.create_report)
-
-        # Seta validadores
-        validator = QRegularExpressionValidator(
-            QRegularExpression(r"(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[12])/[12][0-9]{3}")
-        )
-        self.txt_date.setValidator(validator)
-        self.txt_start_date.setValidator(validator)
-        self.txt_end_date.setValidator(validator)
-
-        validator = QRegularExpressionValidator(QRegularExpression(r'\d+(,\d+)?'))
-        self.txt_value.setValidator(validator)
-
-        validator = QRegularExpressionValidator(QRegularExpression(r'\d+'))
-        self.txt_nfe_search.setValidator(validator)
-        self.txt_nfe.setValidator(validator)
-
-    def start_app(self):
         # Verifica conexão após iniciar janela principal
         if self.database.connection_state == DatabaseConnection.State.DATABASE_NOT_FOUND:
             Message.critical(
                 self,
                 'CRÍTICO',
                 'Erro ao acessar banco de dados!\n'
-                'Se seu banco de dados estiver na rede verifique se há conexão com a internet.'
+                'Se seu banco de dados estiver na rede verifique se há conexão com o computador servidor.'
             )
         elif self.database.connection_state == DatabaseConnection.State.NO_DATABASE:
             Message.warning(self, 'ATENÇÃO', 'Insira um banco de dados para usar o programa.')
             self.action_config.trigger()
+        else:
+            # Cria worker para fazer o backup
+            self.backup_worker = DoBackupWorker(self.database)
+            self.backup_worker.progress.connect(self.backup_progress)
+            self.backup_worker.finished.connect(self.backup_finished)
 
-        # Retorna ano e mês atual
-        current_month, current_year = get_current_month_year()
+            # Inicia worker
+            self.backup_worker.start()
 
-        # Bloqueia eventos para inserir o mês atual
-        self.cb_month.blockSignals(True)
-        self.cb_month.setCurrentIndex(current_month - 1)
-        self.cb_month.blockSignals(False)
+            # Retorna ano e mês atual
+            current_month, current_year = get_current_month_year()
 
-        # Insere ano atual pelo índice
-        index = self.cb_year.findText(str(current_year))
-        self.cb_year.setCurrentIndex(index)
+            # Bloqueia eventos para inserir o mês atual
+            self.cb_month.blockSignals(True)
+            self.cb_month.setCurrentIndex(current_month - 1)
+            self.cb_month.blockSignals(False)
+
+            # Insere ano atual pelo índice
+            index = self.cb_year.findText(str(current_year))
+            self.cb_year.setCurrentIndex(index)
 
         # Configura dados
         self.setup_data()
+
+    def init_ui(self):
+        """Realiza conexões de signals e slots"""
+        self.setWindowTitle(APP_NAME.upper())
+        self.setFixedSize(850, 560)
+
+        # Conecta botões do menu principal
+        self.bt_register_menu.clicked.connect(lambda: self.registry_menu_clicked())
+        self.bt_search_menu.clicked.connect(lambda: self.search_menu_clicked())
+        self.bt_export_menu.clicked.connect(lambda: self.export_menu_clicked())
+
+        # Seta botões do menu de tarefas
+        self.action_config.triggered.connect(lambda: DatabaseConfigDialog(self, self.database).show())
+        self.action_import_backup.triggered.connect(lambda: ImportBackupDialog(self, self.database).show())
+        self.action_suppliers.triggered.connect(lambda: SupplierDialog(self, self.database).show())
+        self.action_years.triggered.connect(lambda: YearDialog(self, self.database).show())
+        self.action_light_theme.triggered.connect(lambda: self.handle_theme('light'))
+        self.action_dark_theme.triggered.connect(lambda: self.handle_theme('dark'))
+
+        # É necessário suprimir esse evento para não remover a mensagem de edição da status bar,
+        # quando o menu bar disparar o evento de hover
+        self.menubar.installEventFilter(StatusTipEventFilter(self))
+
+        # Adiciona widgets a status bar
+        self.statusBar().addPermanentWidget(self.backup_label)
+        self.statusBar().addPermanentWidget(self.backup_bar)
+        self.backup_label.setVisible(False)
+        self.backup_bar.setVisible(False)
+
+        # Página Registro
+        self.cb_supplier.setCurrentIndex(-1)
+        self.cb_supplier.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.bt_save.clicked.connect(self.save_registry)
+        self.bt_clear.clicked.connect(self.clear_registry)
+        self.bt_delete.clicked.connect(self.delete_registry)
+
+        # Página Pesquisa
+        action = QAction(self)
+        action.setShortcuts(['Return', 'Enter'])
+        self.bt_search.addAction(action)
+
+        self.table_search.setModel(TableModel())
+        self.table_search.doubleClicked.connect(self.edit_registry)
+        self.table_search.verticalHeader().sectionDoubleClicked.connect(self.edit_registry)
+
+        self.bt_clear_search.clicked.connect(self.clear_search)
+        self.bt_search.clicked.connect(self.search)
+
+        # Página Exportar
+        self.web_view.setZoomFactor(0.8)
+        self.web_view.setHtml('')
+
+        months = get_months_name()
+        self.cb_month.addItems(months)
+
+        self.bt_pdf.clicked.connect(self.export_pdf)
+        self.bt_print.clicked.connect(self.print_report)
+        self.cb_month.currentIndexChanged.connect(self.create_report)
+        self.cb_year.currentIndexChanged.connect(self.create_report)
+
+        # Seta validadores
+        validator = DateValidator()
+        self.cb_date.setValidator(validator)
+        self.cb_start_date.setValidator(validator)
+        self.cb_end_date.setValidator(validator)
+
+        validator = QRegularExpressionValidator(QRegularExpression(r'\d+(,\d+)?'))
+        self.txt_value.setValidator(validator)
+
+        validator = QRegularExpressionValidator(QRegularExpression(r'[1-9]\d*'))
+        self.txt_nfe_search.setValidator(validator)
+        self.txt_nfe.setValidator(validator)
 
     def setup_data(self):
         # Verifica conexão
         connected = self.database.connection_state == DatabaseConnection.State.CONNECTED
 
-        # Se não houver conexão desabiilita funções do aplicativo
+        # Se não houver conexão desabilita funções do aplicativo
         self.action_years.setDisabled(not connected)
         self.action_suppliers.setDisabled(not connected)
         self.action_import_backup.setDisabled(not connected)
@@ -211,28 +226,55 @@ class App(QMainWindow, Ui_MainWindow):
             self.create_report()
             self.search()
 
+    @Slot()
+    def backup_progress(self, progress: int):
+        """Atualiza widgets de backup"""
+        if not self.backup_bar.isVisible():
+            self.backup_bar.setVisible(True)
+            self.backup_label.setVisible(True)
+
+        self.backup_bar.setValue(progress)
+
+    @Slot()
+    def backup_finished(self):
+        """Limpa worker e esconde widgets"""
+        self.backup_label.setVisible(False)
+        self.backup_bar.setVisible(False)
+
+        self.backup_worker = None
+
+    @Slot()
+    def handle_status_message(self, value: int):
+        """Manipula status bar."""
+        if value != -1:
+            message = f'EDITANDO REGISTRO: {value}'
+            self.statusBar().showMessage(message)
+        else:
+            self.statusBar().clearMessage()
+
     # Ativa página 'registrar' e entra no modo inserção
     def registry_menu_clicked(self):
         self.ID = -1
         self.clear_registry()
+        self.handle_status_message(self.ID)
 
     # Ativa página 'pesquisar'
     def search_menu_clicked(self):
         self.mp_main.setCurrentIndex(1)
-        self.status_message.setText('')
         self.txt_nfe_search.setFocus()
+        self.handle_status_message(self.ID)
 
     # Ativa página 'exportar'
     def export_menu_clicked(self):
         self.mp_main.setCurrentIndex(2)
-        self.status_message.setText('')
+        self.handle_status_message(self.ID)
 
     # Cria ou edita registro no banco de dados
     @check_connection
     def save_registry(self):
         fields = [
             self.txt_nfe,
-            self.txt_date,
+            self.cb_date,
             self.cb_supplier,
             self.txt_value
         ]
@@ -250,7 +292,7 @@ class App(QMainWindow, Ui_MainWindow):
         # Verifica se é uma data válida
         if not date:
             Message.warning(self, 'ATENÇÃO', 'Data inválida!')
-            self.txt_date.setFocus()
+            self.cb_date.setFocus()
             return
 
         # Cria dicionário com dados
@@ -269,10 +311,8 @@ class App(QMainWindow, Ui_MainWindow):
             query = self.database.read(
                 table='history',
                 fields=['count(*)'],
-                where={
-                    'clause': 'WHERE nfe LIKE ? AND supplier LIKE ?',
-                    'values': [fields['nfe'], fields['supplier']]
-                }
+                clause='WHERE nfe LIKE ? AND supplier LIKE ?',
+                values=[fields['nfe'], fields['supplier']]
             )
 
             query.first()
@@ -301,7 +341,7 @@ class App(QMainWindow, Ui_MainWindow):
                 message = 'Registro inserido com sucesso.'
             # Do contrário se trata de modo de edição
             else:
-                self.database.update(table='history', fields=fields, id_record=self.ID)
+                self.database.update(table='history', fields=fields, clause=f'WHERE id LIKE {self.ID}')
                 message = 'Registro alterado com sucesso.'
 
             # Prepara para novo registro e avisa usuário
@@ -316,7 +356,7 @@ class App(QMainWindow, Ui_MainWindow):
     # Limpa campos da página registro
     def clear_registry(self):
         self.txt_nfe.clear()
-        self.txt_date.clear()
+        self.cb_date.clear()
         self.cb_supplier.lineEdit().setText('')
         self.txt_value.clear()
 
@@ -345,8 +385,8 @@ class App(QMainWindow, Ui_MainWindow):
     def clear_search(self):
         self.txt_nfe_search.clear()
         self.txt_supplier_search.clear()
-        self.txt_start_date.clear()
-        self.txt_end_date.clear()
+        self.cb_start_date.clear()
+        self.cb_end_date.clear()
 
         self.txt_nfe_search.setFocus()
 
@@ -355,19 +395,17 @@ class App(QMainWindow, Ui_MainWindow):
     def search(self):
         nfe = self.txt_nfe_search.text()
         supplier = self.txt_supplier_search.text()
-        start_date = parse_date(self.txt_start_date.text(), '%d/%m/%Y', '%Y-%m-%d', on_fail=DateMinMax.MIN)
-        end_date = parse_date(self.txt_end_date.text(), '%d/%m/%Y', '%Y-%m-%d', on_fail=DateMinMax.MAX)
+        start_date = parse_date(self.cb_start_date.currentText(), '%d/%m/%Y', '%Y-%m-%d', on_fail=DateMinMax.MIN)
+        end_date = parse_date(self.cb_end_date.currentText(), '%d/%m/%Y', '%Y-%m-%d', on_fail=DateMinMax.MAX)
 
         try:
             # Realiza consulta
             query = self.database.read(
                 table='history',
                 fields=['id', 'nfe', 'date', 'supplier', 'value'],
-                where={
-                    'clause': "WHERE nfe LIKE '%' || ? ||  '%' AND supplier LIKE '%' || ? || '%' AND date >= ? AND "
-                              "date <= ? ORDER BY date",
-                    'values': [nfe, supplier, start_date, end_date]
-                }
+                clause="WHERE nfe LIKE '%' || ? ||  '%' AND supplier LIKE '%' || ? || '%'" \
+                       "AND date >= ? AND date <= ? ORDER BY date",
+                values=[nfe, supplier, start_date, end_date]
             )
             # Seta resultado da query ao model
             self.model.setQuery(query)
@@ -442,7 +480,7 @@ class App(QMainWindow, Ui_MainWindow):
                                               'verifique a conexão, por favor.')
 
     # Traz dados da QTableView para a página de registro
-    def history_record_selected(self, index: QModelIndex | int):
+    def edit_registry(self, index: QModelIndex | int):
         # Pega linha clicada
         row = index.row() if isinstance(index, QModelIndex) else index
 
@@ -455,7 +493,7 @@ class App(QMainWindow, Ui_MainWindow):
 
         # Seta dados nos campos
         self.txt_nfe.setText(str(nfe))
-        self.txt_date.setText(date)
+        self.cb_date.setCurrentText(date)
         self.cb_supplier.lineEdit().setText(supplier)
         self.txt_value.setText(value)
 
@@ -467,7 +505,7 @@ class App(QMainWindow, Ui_MainWindow):
     def load_years(self):
         self.cb_year.blockSignals(True)
 
-        years = get_years(self.database)
+        years = self.database.get_years(self.database)
         self.cb_year.clear()
         self.cb_year.addItems(years)
 
@@ -479,10 +517,7 @@ class App(QMainWindow, Ui_MainWindow):
         query = self.database.read(
             table='suppliers',
             fields=['supplier'],
-            where={
-                'clause': 'ORDER BY supplier',
-                'values': []
-            }
+            clause='ORDER BY supplier'
         )
 
         data = []
@@ -501,7 +536,7 @@ class App(QMainWindow, Ui_MainWindow):
         year = self.cb_year.currentText()
 
         # Pega o range do mês com base no ano e no mês atual
-        start_date, end_date = parse_month(self.cb_month.currentIndex() + 1, int(year))
+        start_date, end_date = get_range_month(self.cb_month.currentIndex() + 1, int(year))
 
         rows = []
         total = 0
@@ -510,10 +545,8 @@ class App(QMainWindow, Ui_MainWindow):
         query = self.database.read(
             table='history',
             fields=['nfe', 'date', 'supplier', 'value'],
-            where={
-                'clause': "WHERE date >= ? AND date <= ? ORDER BY date",
-                'values': [start_date, end_date]
-            }
+            clause='WHERE date >= ? AND date <= ? ORDER BY date',
+            values=[start_date, end_date]
         )
 
         while query.next():
@@ -544,61 +577,43 @@ class App(QMainWindow, Ui_MainWindow):
         self.web_view.setHtml(html)
 
 
-# Usado para auxiliar na depuração
-def exception_hook(exctype, value, traceback):
-    sys.__excepthook__(exctype, value, traceback)
+def exception_hook(*args, **kwargs):
+    """Custom hook para receber exceptions vindas do C++(QT) durante desenvolvimento"""
+    sys.__excepthook__(*args, **kwargs)
     sys.exit(1)
 
 
-# Inicia o aplicativo
 if __name__ == "__main__":
+    locale.setlocale(locale.LC_ALL, 'pt_BR.utf8')
+    sys.excepthook = exception_hook
+
+    if not DEBUG:
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
 
     # Altera id do aplicativo para evitar bugs com o ícone na barra de tarefas
     try:
         # noinspection PyUnresolvedReferences
         from ctypes import windll
 
-        myappid = 'kamua.nfe_report.1.0.0'
+        myappid = 'kamua.relatorio_de_notas.1.0.0'
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except ImportError:
         pass
 
-    # Desativa splash do pyinstaller quando a aplicação carregar
+    # noinspection PyBroadException
     try:
-        # noinspection PyUnresolvedReferences
-        import pyi_splash
+        app = QApplication(sys.argv)
+        app.setWindowIcon(QIcon(u":/icons/assets/task-64.png"))
 
-        pyi_splash.close()
-    except ModuleNotFoundError:
-        pass
+        window = MainWindow()
+        window.setStyleSheet('')
+        window.show()
 
-    # Vincula hook personalizado para receber logs durante desenvolvimento
-    sys.excepthook = exception_hook
+        tb = app.exec()
 
-    # qt = QApplication(sys.argv)
-    # qt.setStyle('Fusion')
-    # qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
-    #
-    # app = App()
-    # app.show()
-    # app.start_app()
-    #
-    # sys.exit(qt.exec())
+        if tb != 0:
+            Logger().error(tb)
 
-    try:
-        qt = QApplication(sys.argv)
-        qt.setStyle('Fusion')
-        qt.setWindowIcon(QIcon(os.path.join(BASEDIR, 'assets/task-64.png')))
-
-        app = App()
-        app.show()
-        app.start_app()
-
-        sys.exit(qt.exec())
-    except Exception as e:
-        logging.basicConfig(
-            filename=os.path.join(BASEDIR, 'logging.log'),
-            format='%(levelname)s | %(asctime)s - %(message)s'
-        )
-
-        logging.critical(f'{e.__class__.__name__} - {e}')
+        sys.exit(tb)
+    except Exception:
+        Logger().exception('')

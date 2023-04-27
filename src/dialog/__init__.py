@@ -1,12 +1,12 @@
 from .calendar import CalendarDialog
-from .configuration import ConfigurationDialog
+from .database_config import DatabaseConfigDialog
 from .supplier import SupplierDialog
 from .year import YearDialog
 from .import_backup import ImportBackupDialog
 
 __all__ = [
     'CalendarDialog',
-    'ConfigurationDialog',
+    'DatabaseConfigDialog',
     'SupplierDialog',
     'YearDialog',
     'ImportBackupDialog'

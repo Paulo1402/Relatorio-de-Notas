@@ -1,12 +1,11 @@
 import csv
 
-from PyQt6.QtSql import QSqlQuery
+from PySide6.QtSql import QSqlQuery
 
-from utils import parse_date, from_currency_to_float
+from src.services import DatabaseConnection
+from src.utils import parse_date, from_currency_to_float
 
 if __name__ == '__main__':
-    from services import DatabaseConnection
-
     database = DatabaseConnection()
     database.connect()
 

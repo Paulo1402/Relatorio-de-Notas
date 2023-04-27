@@ -1,0 +1,30 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>assets/erase-48.png</file>
+    <file>assets/backup-32.png</file>
+    <file>assets/calendar-32.png</file>
+    <file>assets/calendar-64.png</file>
+    <file>assets/config-32.png</file>
+    <file>assets/dark-mode-32.png</file>
+    <file>assets/data-48.png</file>
+    <file>assets/db.png</file>
+    <file>assets/db-64.png</file>
+    <file>assets/db-config-32.png</file>
+    <file>assets/delete-32.png</file>
+    <file>assets/delete-48.png</file>
+    <file>assets/export-48.png</file>
+    <file>assets/folder-32.png</file>
+    <file>assets/icon.ico</file>
+    <file>assets/light-mode-32.png</file>
+    <file>assets/new-32.png</file>
+    <file>assets/open-64.png</file>
+    <file>assets/pdf-48.png</file>
+    <file>assets/print-48.png</file>
+    <file>assets/registry-48.png</file>
+    <file>assets/save-48.png</file>
+    <file>assets/search-48.png</file>
+    <file>assets/supplier-48.png</file>
+    <file>assets/task-64.png</file>
+    <file>assets/themes-32.png</file>
+  </qresource>
+</RCC>

@@ -1,7 +1,7 @@
-from PyQt6.QtWidgets import QDialog
+from PySide6.QtWidgets import QDialog
 
 from ui.YearDialog import Ui_Dialog
-from services import DatabaseConnection, get_years, delete_year
+from services import DatabaseConnection
 from utils import Message
 
 
@@ -15,7 +15,7 @@ class YearDialog(QDialog, Ui_Dialog):
         self.database = database
 
         # Pega anos dos dados
-        years = get_years(self.database, force_current_year=False)
+        years = self.database.get_years(force_current_year=False)
 
         self.cb_years.clear()
         self.cb_years.addItems(years)
@@ -32,7 +32,7 @@ class YearDialog(QDialog, Ui_Dialog):
 
         # Deleta todos os dados do ano selecionado
         year = self.cb_years.currentText()
-        delete_year(self.database, year)
+        self.database.delete_year(year)
 
         self.cb_years.removeItem(self.cb_years.currentIndex())
 
