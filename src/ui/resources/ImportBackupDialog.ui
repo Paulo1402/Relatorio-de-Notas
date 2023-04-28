@@ -137,7 +137,7 @@
           </property>
           <property name="icon">
            <iconset resource="resource.qrc">
-            <normaloff>:/icons/assets/folder.png</normaloff>:/icons/assets/folder.png</iconset>
+            <normaloff>:/icons/assets/folder-32.png</normaloff>:/icons/assets/folder-32.png</iconset>
           </property>
           <property name="shortcut">
            <string>Ctrl+O</string>

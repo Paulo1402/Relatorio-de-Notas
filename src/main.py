@@ -3,61 +3,42 @@ Ponto de entrada do programa.
 
 Esse arquivo é compilado usando a lib PyInstaller para gerar um executável para distribuição.
 """
+import os
 import sys
 import warnings
 import locale
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QHeaderView, QLabel, QProgressBar
-from PySide6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression, Slot
+from PySide6.QtCore import Qt, QModelIndex, QMarginsF, QRegularExpression, Slot, QTimer
 from PySide6.QtGui import QPageLayout, QIcon, QPageSize, QRegularExpressionValidator, QCloseEvent, QAction
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from ui.MainWindow import Ui_MainWindow
 from services import *
 from utils import *
 from dialog import *
 
+
 # todo FrontEnd
-#   Adicionar dark / light mode
-#   Adicionar efeitos CSS
-#   Adicionar fixup no campo de data
-#   Adicionar auto format no campo de valor
+#   Dar uma conferida nos ToolTips
 
 # todo BackEnd
-#   Usar PDFtoPrinter.exe para imprimir relatório, é possível exportar em PDF na pasta temp para depois imprimir
 
 # todo Refactoring
-#   Restruturar projeto para o novo formato (Se basear no projeto Controle de Estoque)
-#   Atualizar bindings para usar PySide6
 
 # todo Testes
 
 # todo Bugs
 
-"""
-    possible solution is to use PDFtoPrinter.exe
-    http://www.columbia.edu/~em36/pdftoprinter.html?fbclid=IwAR1kRJ8oWyduJ_HreuBMdQEIUlUZWYCJFzN8yVGUITmXXd6ei74kVwusSDE
-    
-    import subprocess
 
-    def command_print(event = None):
-        command = "{} {}".format('PDFtoPrinter.exe','report.pdf')
-        subprocess.call(command,shell=True)
-    
-    command_print()
-"""
-
-
-# Janela principal
 class MainWindow(QMainWindow, Ui_MainWindow):
+    """Janela principal do aplicativo."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
 
-        # Instancia variáveis
-        self.model: TableModel | None = None
-        self.printer: QPrinter | None = None
-
+        self.timer: QTimer = None
+        self.temp_files = []
         self._ID = -1
 
         # Abre conexão com o banco de dados
@@ -83,7 +64,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         flag = bool(value + 1)
 
         self.bt_delete.setDisabled(not flag)
-        self.mp_main.setCurrentIndex(0)
         self.txt_nfe.setFocus()
 
         self.handle_status_message(value)
@@ -93,6 +73,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if Message.warning_question(self, 'Deseja fechar o aplicativo?') == Message.NO:
             event.ignore()
             return
+
+        # Remove arquivos temporários gerados
+        for file in self.temp_files:
+            try:
+                os.remove(file)
+            except FileNotFoundError:
+                pass
 
         self.database.disconnect()
         event.accept()
@@ -139,7 +126,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def init_ui(self):
         """Realiza conexões de signals e slots"""
         self.setWindowTitle(APP_NAME.upper())
-        self.setFixedSize(850, 560)
 
         # Conecta botões do menu principal
         self.bt_register_menu.clicked.connect(lambda: self.registry_menu_clicked())
@@ -159,25 +145,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.menubar.installEventFilter(StatusTipEventFilter(self))
 
         # Adiciona widgets a status bar
-        self.statusBar().addPermanentWidget(self.backup_label)
-        self.statusBar().addPermanentWidget(self.backup_bar)
+        self.statusBar.addPermanentWidget(self.backup_label)
+        self.statusBar.addPermanentWidget(self.backup_bar)
         self.backup_label.setVisible(False)
         self.backup_bar.setVisible(False)
 
         # Página Registro
         self.cb_supplier.setCurrentIndex(-1)
         self.cb_supplier.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.cb_date.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.bt_save.clicked.connect(self.save_registry)
-        self.bt_clear.clicked.connect(self.clear_registry)
+        self.bt_new.clicked.connect(self.new_registry)
         self.bt_delete.clicked.connect(self.delete_registry)
 
         # Página Pesquisa
         action = QAction(self)
         action.setShortcuts(['Return', 'Enter'])
-        self.bt_search.addAction(action)
+        action.triggered.connect(lambda: self.bt_search.animateClick())
+        self.addAction(action)
 
-        self.table_search.setModel(TableModel())
+        self.table_search.setModel(TableModel(date_fields=[2], currency_fields=[4]))
         self.table_search.doubleClicked.connect(self.edit_registry)
         self.table_search.verticalHeader().sectionDoubleClicked.connect(self.edit_registry)
 
@@ -193,8 +181,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.bt_pdf.clicked.connect(self.export_pdf)
         self.bt_print.clicked.connect(self.print_report)
-        self.cb_month.currentIndexChanged.connect(self.create_report)
-        self.cb_year.currentIndexChanged.connect(self.create_report)
+        self.cb_month.currentIndexChanged.connect(lambda: self.create_report())
+        self.cb_year.currentIndexChanged.connect(lambda: self.create_report())
 
         # Seta validadores
         validator = DateValidator()
@@ -209,7 +197,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.txt_nfe_search.setValidator(validator)
         self.txt_nfe.setValidator(validator)
 
+        # Carrega tema configurado
+        config = get_config(ConfigSection.APP)
+        theme = config['theme']
+        load_theme(theme)
+
+        # Seta página inicial
+        self.registry_menu_clicked()
+
     def setup_data(self):
+        """Carrega dados."""
+
         # Verifica conexão
         connected = self.database.connection_state == DatabaseConnection.State.CONNECTED
 
@@ -219,8 +217,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_import_backup.setDisabled(not connected)
         self.mp_main.setDisabled(not connected)
 
+        # Carrega dados
         if connected:
-            # Carrega dados para dentro do app
             self.load_years()
             self.load_suppliers()
             self.create_report()
@@ -248,30 +246,52 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Manipula status bar."""
         if value != -1:
             message = f'EDITANDO REGISTRO: {value}'
-            self.statusBar().showMessage(message)
+            self.statusBar.showMessage(message)
         else:
-            self.statusBar().clearMessage()
+            self.statusBar.clearMessage()
 
-    # Ativa página 'registrar' e entra no modo inserção
+    @Slot()
+    def handle_theme(self, theme: str):
+        """Manipula tema"""
+        config = get_config(ConfigSection.APP)
+        config['theme'] = theme
+
+        set_config(config, ConfigSection.APP)
+        load_theme(theme)
+
+    @Slot()
     def registry_menu_clicked(self):
-        self.ID = -1
-        self.clear_registry()
-        self.handle_status_message(self.ID)
+        """Ativa página 'registrar' e entra no modo inserção."""
+        self.mp_main.setCurrentIndex(0)
 
-    # Ativa página 'pesquisar'
+    @Slot()
     def search_menu_clicked(self):
+        """Ativa página 'pesquisar'."""
         self.mp_main.setCurrentIndex(1)
         self.txt_nfe_search.setFocus()
         self.handle_status_message(self.ID)
 
-    # Ativa página 'exportar'
+    # noinspection PyUnresolvedReferences
+    @Slot()
     def export_menu_clicked(self):
+        """Ativa página 'exportar'."""
         self.mp_main.setCurrentIndex(2)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(lambda: self.web_view.repaint())
+        self.timer.setSingleShot(True)
+        self.timer.start(300)
+
         self.handle_status_message(self.ID)
 
-    # Cria ou edita registro no banco de dados
     @check_connection
+    @Slot()
     def save_registry(self):
+        """Cria ou edita registro no banco de dados."""
+
+        # Define modo de interação
+        mode = Mode.INSERT if self.ID == -1 else Mode.UPDATE
+
         fields = [
             self.txt_nfe,
             self.cb_date,
@@ -280,14 +300,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ]
 
         # Verifica se há campos em branco
-        empty_fields = get_empty_fields(fields)
-
-        if len(empty_fields) > 0:
+        if not check_empty_fields(fields):
             Message.warning(self, 'ATENÇÃO', 'Preencha os campos obrigatórios!')
-            empty_fields[0].setFocus()
             return
 
-        date = parse_date(fields[1].text(), '%d/%m/%Y', '%Y-%m-%d')
+        date = parse_date(self.cb_date.currentText(), '%d/%m/%Y')
 
         # Verifica se é uma data válida
         if not date:
@@ -303,43 +320,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             'value': from_currency_to_float(fields[3].text())
         }
 
-        message = 'Deseja editar esse registro no banco de dados?'
-
-        # Caso ID seja -1 então estamos em modo de inserção
-        if self.ID == -1:
-            # Verifica se já existe um registro com a mesma nfe e fornecedor no banco de dados
-            query = self.database.read(
+        # Verifica se já existe um registro com a mesma nfe e fornecedor no banco de dados
+        if self.database.exists(
                 table='history',
-                fields=['count(*)'],
-                clause='WHERE nfe LIKE ? AND supplier LIKE ?',
-                values=[fields['nfe'], fields['supplier']]
-            )
+                clause='WHERE nfe LIKE ? AND supplier LIKE ? AND id != ?',
+                values=[fields['nfe'], fields['supplier'], self.ID]
+        ):
+            Message.warning(self, 'ATENÇÃO', 'Essa nota já foi registrada com esse fornecedor!')
+            return
 
-            query.first()
-
-            if query.value(0) > 0:
-                Message.warning(self, 'ATENÇÃO', 'Essa nota já foi registrada com esse fornecedor!')
-                return
-
-            message = message.replace('editar', 'inserir')
+        message = 'Deseja {} esse registro no banco de dados?'
+        message = message.format('inserir' if mode == Mode.INSERT else 'editar')
 
         # Faz pergunta de segurança ao usuário, caso não confirme aborta ação
         if Message.warning_question(self, message, Message.YES) == Message.NO:
             return
 
         # Caso fornecedor não se encontre no banco de dados, o adiciona
-        supplier = self.cb_supplier.currentText().upper()
-
-        if self.cb_supplier.findText(supplier) == -1:
-            self.database.create(table='suppliers', fields={'supplier': supplier})
+        if self.cb_supplier.findText(fields['supplier']) == -1:
+            self.database.create(table='suppliers', fields={'supplier': fields['supplier']})
             self.load_suppliers()
 
         try:
-            # Caso esteja em modo de inserção
-            if self.ID == -1:
+            if mode == Mode.INSERT:
                 self.database.create(table='history', fields=fields)
                 message = 'Registro inserido com sucesso.'
-            # Do contrário se trata de modo de edição
             else:
                 self.database.update(table='history', fields=fields, clause=f'WHERE id LIKE {self.ID}')
                 message = 'Registro alterado com sucesso.'
@@ -348,23 +353,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             Message.information(self, 'AVISO', message)
             self.registry_menu_clicked()
 
-            # Faz nova pesquisa na página 'pesquisar'
+            # Recarrega dados
             self.search()
+            self.create_report()
         except QueryError:
             Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a operação!')
 
-    # Limpa campos da página registro
-    def clear_registry(self):
-        self.txt_nfe.clear()
-        self.cb_date.clear()
-        self.cb_supplier.lineEdit().setText('')
-        self.txt_value.clear()
+    @Slot()
+    def new_registry(self):
+        """ Limpa campos da página registro."""
+        fields = [
+            self.txt_nfe,
+            self.cb_date,
+            self.cb_supplier,
+            self.txt_value
+        ]
 
+        clear_fields(fields)
         self.txt_nfe.setFocus()
 
-    # Deleta registro
+        self.ID = -1
+
     @check_connection
+    @Slot()
     def delete_registry(self):
+        """Deleta registro."""
         if Message.warning_question(self, 'Deseja deletar esse registro no banco de dados?') == Message.NO:
             return
 
@@ -376,13 +389,39 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             Message.information(self, 'AVISO', 'Registro deletado com sucesso.')
             self.registry_menu_clicked()
 
-            # Faz nova pesquisa na página 'pesquisar'
+            # Recarrega dados
             self.search()
+            self.create_report()
         except QueryError:
             Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a operação!')
 
-    # Limpa campos da página de pesquisa
+    @Slot()
+    def edit_registry(self, index: QModelIndex | int):
+        """Traz dados da QTableView para a página de registro."""
+        # Pega linha clicada
+        row = index.row() if isinstance(index, QModelIndex) else index
+        model = self.table_search.model()
+
+        # Obtém dados
+        id_record = model.index(row, 0).data()
+        nfe = model.index(row, 1).data()
+        date = model.index(row, 2).data()
+        supplier = model.index(row, 3).data()
+        value = from_currency_to_float(model.index(row, 4).data())
+
+        # Seta dados nos campos
+        self.txt_nfe.setText(str(nfe))
+        self.cb_date.setCurrentText(date)
+        self.cb_supplier.lineEdit().setText(supplier)
+        self.txt_value.setText(from_float_to_currency(value))
+
+        # Entra em modo de edição
+        self.ID = id_record
+        self.registry_menu_clicked()
+
+    @Slot()
     def clear_search(self):
+        """Limpa campos da página de pesquisa."""
         self.txt_nfe_search.clear()
         self.txt_supplier_search.clear()
         self.cb_start_date.clear()
@@ -390,148 +429,71 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.txt_nfe_search.setFocus()
 
-    # Pesquisa dados no banco de dados e insere na QTableView
     @check_connection
+    @Slot()
     def search(self):
+        """Pesquisa dados no banco de dados e insere na QTableView."""
         nfe = self.txt_nfe_search.text()
         supplier = self.txt_supplier_search.text()
-        start_date = parse_date(self.cb_start_date.currentText(), '%d/%m/%Y', '%Y-%m-%d', on_fail=DateMinMax.MIN)
-        end_date = parse_date(self.cb_end_date.currentText(), '%d/%m/%Y', '%Y-%m-%d', on_fail=DateMinMax.MAX)
+        start_date = parse_date(self.cb_start_date.currentText(), '%d/%m/%Y', on_fail=DateMinMax.MIN)
+        end_date = parse_date(self.cb_end_date.currentText(), '%d/%m/%Y', on_fail=DateMinMax.MAX)
 
-        try:
-            # Realiza consulta
-            query = self.database.read(
-                table='history',
-                fields=['id', 'nfe', 'date', 'supplier', 'value'],
-                clause="WHERE nfe LIKE '%' || ? ||  '%' AND supplier LIKE '%' || ? || '%'" \
-                       "AND date >= ? AND date <= ? ORDER BY date",
-                values=[nfe, supplier, start_date, end_date]
-            )
-            # Seta resultado da query ao model
-            self.model.setQuery(query)
+        # Realiza consulta
+        query = self.database.read(
+            table='history',
+            fields=['id', 'nfe', 'date', 'supplier', 'value'],
+            clause="WHERE nfe LIKE '%' || ? ||  '%' AND supplier LIKE '%' || ? || '%' "
+                   "AND date >= ? AND date <= ? ORDER BY date",
+            values=[nfe, supplier, start_date, end_date]
+        )
 
-            # Seta headers do model
-            self.model.setHeaderData(1, Qt.Orientation.Horizontal, 'NFE')
-            self.model.setHeaderData(2, Qt.Orientation.Horizontal, 'DATA')
-            self.model.setHeaderData(3, Qt.Orientation.Horizontal, 'FORNECEDOR')
-            self.model.setHeaderData(4, Qt.Orientation.Horizontal, 'VALOR')
+        # Seta resultado da query ao model
+        model = self.table_search.model()
+        model.setQuery(query)
 
-            # Esconde a coluna de ID e redimensiona colunas
-            self.table_search.setColumnHidden(0, True)
-            self.table_search.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        except QueryError as e:
-            Message.critical(
-                self,
-                'CRÍTICO',
-                f'Não foi possível realizar a consulta, verifique a query.\n\n{e.query}'
-            )
+        # Seta headers do model
+        model.setHeaderData(1, Qt.Orientation.Horizontal, 'NFE')
+        model.setHeaderData(2, Qt.Orientation.Horizontal, 'DATA')
+        model.setHeaderData(3, Qt.Orientation.Horizontal, 'FORNECEDOR')
+        model.setHeaderData(4, Qt.Orientation.Horizontal, 'VALOR')
 
-    # Exporta relatório em pdf
+        # Esconde a coluna de ID e redimensiona colunas
+        self.table_search.setColumnHidden(0, True)
+        self.table_search.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+
+    @Slot()
     def export_pdf(self):
+        """Exporta relatório em pdf."""
         if Message.warning_question(self, 'Deseja exportar o relatório em pdf?', Message.YES) == Message.NO:
             return
 
-        # Seta nome inicial e abre caixa de diálogo para usuário selecionar local para salvar
-        inicial_name = f'RELATÓRIO DE NOTAS {self.cb_month.currentText()} DE {self.cb_year.currentText()}'
+        # Abre caixa de diálogo para usuário selecionar local para salvar
+        inicial_name = self.get_initial_filename()
         path = QFileDialog.getSaveFileName(self.centralwidget, 'Salvar em PDF.', inicial_name, 'pdf (*.pdf)')[0]
 
         # Caso usuário selecione um local, salva em pdf e informa usuário
         if path:
-            # Configura layout
-            layout = QPageLayout(
-                QPageSize(QPageSize.PageSizeId.A4),
-                QPageLayout.Orientation.Portrait,
-                QMarginsF(0, 20, 0, 20)
-            )
-
-            self.web_view.printToPdf(path, layout)
+            self._export_pdf(path)
             Message.information(self, 'AVISO', 'Relatório exportado!')
 
-    # Imprime relatório
+    @Slot()
     def print_report(self):
-        if Message.warning_question(self, 'Deseja imprimir o relátorio?', Message.YES) == Message.NO:
+        """Imprime relatório."""
+        if Message.warning_question(self, 'Deseja imprimir o relatório?', Message.YES) == Message.NO:
             return
 
-        self.printer = QPrinter()
-        dialog = QPrintDialog(self.printer, self)
+        filename = self.get_initial_filename()
+        temp_file = os.path.join(os.getenv('temp'), filename)
 
-        if dialog.exec() == QPrintDialog.DialogCode.Rejected:
-            return
+        self.temp_files.append(temp_file)
 
-        # Configura layout
-        # layout = QPageLayout(
-        #     QPageSize(QPageSize.PageSizeId.A4),
-        #     QPageLayout.Orientation.Portrait,
-        #     QMarginsF(0, 50, 0, 50)
-        # )
+        self._export_pdf(temp_file)
+        os.popen(fr'.\bin\PDFtoPrinter.exe "{temp_file}"')
 
-        # self.printer.setPageLayout(layout)
-
-        # self.printer.setResolution(QPrinter.PrinterMode.HighResolution)
-
-        self.web_view.printFinished.connect(self.finished_printing)
-        self.web_view.print(self.printer)
-
-    def finished_printing(self, success: bool):
-        if success:
-            Message.information(self, 'AVISO', 'Relatório impresso!')
-        else:
-            Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a impressão, se a impressora está na rede '
-                                              'verifique a conexão, por favor.')
-
-    # Traz dados da QTableView para a página de registro
-    def edit_registry(self, index: QModelIndex | int):
-        # Pega linha clicada
-        row = index.row() if isinstance(index, QModelIndex) else index
-
-        # Obtém dados
-        id_record = self.model.index(row, 0).data()
-        nfe = self.model.index(row, 1).data()
-        date = self.model.index(row, 2).data()
-        supplier = self.model.index(row, 3).data()
-        value = self.model.index(row, 4).data()
-
-        # Seta dados nos campos
-        self.txt_nfe.setText(str(nfe))
-        self.cb_date.setCurrentText(date)
-        self.cb_supplier.lineEdit().setText(supplier)
-        self.txt_value.setText(value)
-
-        # Entra em modo de edição
-        self.ID = id_record
-
-    # Carrega anos armazenados
     @check_connection
-    def load_years(self):
-        self.cb_year.blockSignals(True)
-
-        years = self.database.get_years(self.database)
-        self.cb_year.clear()
-        self.cb_year.addItems(years)
-
-        self.cb_year.blockSignals(False)
-
-    # Carrega fornecedores
-    @check_connection
-    def load_suppliers(self):
-        query = self.database.read(
-            table='suppliers',
-            fields=['supplier'],
-            clause='ORDER BY supplier'
-        )
-
-        data = []
-
-        while query.next():
-            data.append(query.value(0))
-
-        self.cb_supplier.clear()
-        self.cb_supplier.addItems(data)
-        self.cb_supplier.setCurrentIndex(-1)
-
-    # Cria relatório
-    @check_connection
+    @Slot()
     def create_report(self):
+        """Cria relatório."""
         month = self.cb_month.currentText()
         year = self.cb_year.currentText()
 
@@ -555,12 +517,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             supplier = query.value(2)
             value = query.value(3)
 
-            rows.append({
-                'nfe': nfe,
-                'date': parse_date(date, input_format='%Y-%m-%d', output_format='%d/%b'),
-                'supplier': supplier,
-                'value': from_float_to_currency(value)
-            })
+            rows.append(
+                {
+                    'nfe': nfe,
+                    'date': parse_date(date, input_format='%Y-%m-%d', output_format='%d/%b'),
+                    'supplier': supplier,
+                    'value': from_float_to_currency(value)
+                }
+            )
 
             total += value
 
@@ -575,6 +539,58 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Recebe template formatado e insere na web_view
         html = create_html(data)
         self.web_view.setHtml(html)
+
+    @check_connection
+    def load_years(self):
+        """Carrega anos."""
+        self.cb_year.blockSignals(True)
+
+        years = self.database.get_years(self.database)
+        self.cb_year.clear()
+        self.cb_year.addItems(years)
+
+        self.cb_year.blockSignals(False)
+
+    @check_connection
+    def load_suppliers(self):
+        """Carrega fornecedores."""
+        query = self.database.read(
+            table='suppliers',
+            fields=['supplier'],
+            clause='ORDER BY supplier'
+        )
+
+        data = []
+
+        while query.next():
+            data.append(query.value(0))
+
+        self.cb_supplier.clear()
+        self.cb_supplier.addItems(data)
+        self.cb_supplier.setCurrentIndex(-1)
+
+    def get_initial_filename(self):
+        """Retorna nome inicial do arquivo."""
+        month = self.cb_month.currentText()
+        year = self.cb_year.currentText()
+
+        inicial_name = f'RELATÓRIO DE NOTAS {month} DE {year}.pdf'
+
+        return inicial_name
+
+    def _export_pdf(self, path: str):
+        """
+        Exporta pdf para o caminho passado.
+
+        :param path: Caminho para exportar
+        """
+        layout = QPageLayout(
+            QPageSize(QPageSize.PageSizeId.A4),
+            QPageLayout.Orientation.Portrait,
+            QMarginsF(0, 10, 0, 10)
+        )
+
+        self.web_view.printToPdf(path, layout)
 
 
 def exception_hook(*args, **kwargs):
@@ -595,7 +611,7 @@ if __name__ == "__main__":
         # noinspection PyUnresolvedReferences
         from ctypes import windll
 
-        myappid = 'kamua.relatorio_de_notas.1.0.0'
+        myappid = 'kamua.relatorio_de_notas.2.0.0'
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except ImportError:
         pass
@@ -617,3 +633,4 @@ if __name__ == "__main__":
         sys.exit(tb)
     except Exception:
         Logger().exception('')
+        raise

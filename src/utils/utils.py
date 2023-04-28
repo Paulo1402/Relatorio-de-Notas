@@ -96,8 +96,11 @@ class Animation:
             start: Any,
             end: Any,
             duration: int = 250,
-            easing_curve: QEasingCurve = QEasingCurve.Type.Linear
+            easing_curve: QEasingCurve = QEasingCurve.Type.Linear,
+            finished_callback=None
     ):
+        self._callback = finished_callback
+
         self._animation = QPropertyAnimation(widget, property_name)
         self._animation.setDuration(duration)
         self._animation.setStartValue(start)
@@ -108,6 +111,9 @@ class Animation:
         self._animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
     def _clear(self):
+        if self._callback:
+            self._callback()
+
         self._animation.deleteLater()
         self._animation = None
 

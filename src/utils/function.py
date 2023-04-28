@@ -69,7 +69,7 @@ def get_current_month_year() -> tuple[int, int]:
 def get_months_name() -> list[str]:
     months = [month.upper() for month in calendar.month_name]
 
-    return months
+    return months[1:]
 
 
 def get_today(output: str = '%Y-%m-%d') -> str:
@@ -240,7 +240,7 @@ def clear_fields(fields: list[QLineEdit | QComboBox]):
     """
     for field in fields:
         if isinstance(field, QComboBox):
-            field.setCurrentIndex(0)
+            field.setCurrentText('')
         else:
             field.clear()
 
@@ -275,6 +275,10 @@ def load_theme(theme: str):
         QGroupBox{
             margin: 0;
         } 
+        
+        QToolTip {
+            color: black;
+        }
     ''' % border_color
 
     custom_colors = {

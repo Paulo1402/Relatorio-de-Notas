@@ -10,7 +10,7 @@ class YearDialog(QDialog, Ui_Dialog):
     def __init__(self, parent, database: DatabaseConnection):
         super().__init__(parent)
         self.setupUi(self)
-        self.setFixedSize(160, 85)
+        # self.setFixedSize(160, 85)
 
         self.database = database
 
@@ -40,4 +40,4 @@ class YearDialog(QDialog, Ui_Dialog):
             self.bt_delete.setDisabled(True)
 
         Message.information(self, 'AVISO', 'Registros deletados com sucesso.')
-        self.parent().load_years()
+        self.parent().setup_data()

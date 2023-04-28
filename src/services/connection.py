@@ -201,32 +201,33 @@ class DatabaseConnection:
         if not query.exec():
             raise QueryError(f'Failed execution on query expression: {query.lastQuery()}')
 
-    def is_unique(self, table: str, field: str, key: str) -> bool:
+    def exists(self, table: str, clause: str, values: list = None) -> bool:
         """
-        Retorna se o registro enviado é único na tabela.
+        Verifica se o registro existe na tabela.
 
         :param table: Nome da tabela
-        :param field: Nome do campo
-        :param key: Valor do campo
-        :return: True se o valor for único, do contrário False
+        :param clause: Cláusula para filtrar
+        :param values: Lista de valores para substituir placeholders
+        :return: True se o valor existir, do contrário False
         """
         query = QSqlQuery(self._connection)
 
         query.prepare(
             f"""
             SELECT COUNT(*) FROM {table}
-            WHERE {field} LIKE ?
+            {clause}
             """
         )
 
-        query.addBindValue(key)
+        for value in values:
+            query.addBindValue(value)
 
         if not query.exec():
             raise QueryError(f'Failed execution on query expression: {query.lastQuery()}')
 
         query.first()
 
-        return not bool(query.value(0))
+        return bool(query.value(0))
 
     def reset_sequence(self, table: str):
         """

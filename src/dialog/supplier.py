@@ -10,7 +10,7 @@ class SupplierDialog(QDialog, Ui_Dialog):
     def __init__(self, parent, database: DatabaseConnection):
         super().__init__(parent)
         self.setupUi(self)
-        self.setFixedSize(390, 305)
+        # self.setFixedSize(390, 305)
 
         self.database = database
 

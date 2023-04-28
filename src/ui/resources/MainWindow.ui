@@ -302,6 +302,44 @@
            <enum>QLayout::SetFixedSize</enum>
           </property>
           <item>
+           <widget class="QPushButton" name="bt_new">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>70</height>
+             </size>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="toolTip">
+             <string>NOVO</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="resource.qrc">
+              <normaloff>:/icons/assets/new-48.png</normaloff>:/icons/assets/new-48.png</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>48</width>
+              <height>48</height>
+             </size>
+            </property>
+            <property name="shortcut">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="bt_save">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -339,44 +377,6 @@
               <width>48</width>
               <height>48</height>
              </size>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="bt_clear">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>70</width>
-              <height>70</height>
-             </size>
-            </property>
-            <property name="cursor">
-             <cursorShape>PointingHandCursor</cursorShape>
-            </property>
-            <property name="toolTip">
-             <string>LIMPAR</string>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="icon">
-             <iconset resource="resource.qrc">
-              <normaloff>:/icons/assets/erase-48.png</normaloff>:/icons/assets/erase-48.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>48</width>
-              <height>48</height>
-             </size>
-            </property>
-            <property name="shortcut">
-             <string/>
             </property>
            </widget>
           </item>
@@ -549,7 +549,11 @@
            </widget>
           </item>
           <item row="2" column="2">
-           <widget class="CustomComboBox" name="cb_date"/>
+           <widget class="CustomComboBox" name="cb_date">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -629,10 +633,18 @@
            </widget>
           </item>
           <item row="0" column="3">
-           <widget class="CustomComboBox" name="cb_start_date"/>
+           <widget class="CustomComboBox" name="cb_start_date">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item row="1" column="3">
-           <widget class="CustomComboBox" name="cb_end_date"/>
+           <widget class="CustomComboBox" name="cb_end_date">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -1286,13 +1298,15 @@
   <tabstop>bt_search_menu</tabstop>
   <tabstop>bt_export_menu</tabstop>
   <tabstop>txt_nfe</tabstop>
+  <tabstop>cb_date</tabstop>
   <tabstop>cb_supplier</tabstop>
   <tabstop>txt_value</tabstop>
   <tabstop>bt_save</tabstop>
-  <tabstop>bt_clear</tabstop>
   <tabstop>bt_delete</tabstop>
   <tabstop>txt_nfe_search</tabstop>
   <tabstop>txt_supplier_search</tabstop>
+  <tabstop>cb_start_date</tabstop>
+  <tabstop>cb_end_date</tabstop>
   <tabstop>bt_clear_search</tabstop>
   <tabstop>bt_search</tabstop>
   <tabstop>table_search</tabstop>

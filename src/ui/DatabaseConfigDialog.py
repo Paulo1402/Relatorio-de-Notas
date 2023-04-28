@@ -84,7 +84,7 @@ class Ui_Dialog(object):
         self.bt_open.setFont(font1)
         self.bt_open.setCursor(QCursor(Qt.PointingHandCursor))
         icon1 = QIcon()
-        icon1.addFile(u":/icons/assets/folder.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon1.addFile(u":/icons/assets/folder-32.png", QSize(), QIcon.Normal, QIcon.Off)
         self.bt_open.setIcon(icon1)
         self.bt_open.setIconSize(QSize(20, 20))
 

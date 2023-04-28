@@ -41,4 +41,4 @@ TABLES = {
 }
 
 # Tabelas com primary keys automáticas
-AUTO_INCREMENTED_TABLES = ['suppliers']
+AUTO_INCREMENTED_TABLES = ['history', 'suppliers']
