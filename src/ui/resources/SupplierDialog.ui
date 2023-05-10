@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Fornecedores</string>
+   <string>FORNECEDORES</string>
   </property>
   <property name="modal">
    <bool>true</bool>
@@ -79,6 +79,9 @@
     <widget class="QPushButton" name="bt_search">
      <property name="cursor">
       <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="toolTip">
+      <string>PESQUISAR</string>
      </property>
      <property name="text">
       <string/>

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>846</width>
-    <height>536</height>
+    <height>650</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -289,7 +289,7 @@
        <enum>QFrame::Raised</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="pg_register">
        <layout class="QGridLayout" name="gridLayout_2">

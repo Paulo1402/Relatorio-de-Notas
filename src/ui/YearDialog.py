@@ -63,7 +63,7 @@ class Ui_Dialog(object):
     # setupUi
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Anos", None))
+        Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"ANOS", None))
         self.label.setText(QCoreApplication.translate("Dialog", u"ANO", None))
         self.bt_delete.setText(QCoreApplication.translate("Dialog", u"DELETAR", None))
     # retranslateUi

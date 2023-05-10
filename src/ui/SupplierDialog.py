@@ -93,9 +93,12 @@ class Ui_Dialog(object):
     # setupUi
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Fornecedores", None))
+        Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"FORNECEDORES", None))
         self.bt_delete.setText(QCoreApplication.translate("Dialog", u"DELETAR", None))
         self.label.setText(QCoreApplication.translate("Dialog", u"FORNECEDOR", None))
+#if QT_CONFIG(tooltip)
+        self.bt_search.setToolTip(QCoreApplication.translate("Dialog", u"PESQUISAR", None))
+#endif // QT_CONFIG(tooltip)
         self.bt_search.setText("")
     # retranslateUi
 

@@ -45,25 +45,32 @@ class CustomLineEdit(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.textChanged.connect(self.format_currency)
+        # self.textChanged.connect(self.format_currency)
 
-    # Formata para float ao receber o foco
-    # def focusInEvent(self, a0: QFocusEvent) -> None:
-    #     value = from_currency_to_float(self.text())
-    #     value = str(value).replace('.', ',')
-    #     self.setText(value)
-    #
-    #     super().focusInEvent(a0)
-    #
-    # Formata para moeda ao perder o foco
-    # def focusOutEvent(self, a0: QFocusEvent) -> None:
-    #     value = from_currency_to_float(self.text())
-    #     value = from_float_to_currency(value)
-    #     self.setText(value)
-    #
-    #     super().focusOutEvent(a0)
+    def focusInEvent(self, a0: QFocusEvent):
+        """Formata para "float" ao receber o foco."""
+        if self.text():
+            value = from_currency_to_float(self.text())
+            value = f'{value:.2f}'.replace('.', ',')
+            self.setText(value)
 
-    def format_currency(self, value):
+        super().focusInEvent(a0)
+
+    def focusOutEvent(self, a0: QFocusEvent):
+        """Formata para moeda ao perder o foco."""
+        if self.text():
+            value = from_currency_to_float(self.text())
+            value = from_float_to_currency(value)
+            self.setText(value)
+
+        super().focusOutEvent(a0)
+
+    def format_currency(self, value: str):
+        """
+        Formata string para moeda.
+
+        :param value: string com valor numérico
+        """
         value = re.sub(r"\D", "", value)
 
         if not value:
@@ -97,8 +104,14 @@ class CustomLineEdit(QLineEdit):
         self.blockSignals(False)
 
     @staticmethod
-    def insert_point(start, value):
-        """Insere separador de milhar."""
+    def insert_point(start: int, value: str) -> str:
+        """
+        Insere separador de milhar.
+
+        :param start: Início da string
+        :param value: String com valor numérico
+        :return: String formatada
+        """
         i = value[:len(value) - start]
         m1 = value[-start:][:3]
         m2 = value[-8:][:3]

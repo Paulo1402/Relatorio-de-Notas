@@ -111,7 +111,7 @@ class DatabaseConfigDialog(QDialog, Ui_Dialog):
                                              'selecione outro.')
             return
 
-        self.txt_source.setText(str(path))
+        self.txt_source.setText(str(database))
 
     def open_file(self):
         """Abre caixa de diálogo para selecionar um arquivo."""

@@ -19,7 +19,6 @@ from dialog import *
 
 
 # todo FrontEnd
-#   Dar uma conferida nos ToolTips
 
 # todo BackEnd
 
@@ -261,8 +260,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @Slot()
     def registry_menu_clicked(self):
-        """Ativa página 'registrar' e entra no modo inserção."""
+        """Ativa página 'registrar'."""
         self.mp_main.setCurrentIndex(0)
+        self.txt_nfe.setFocus()
 
     @Slot()
     def search_menu_clicked(self):
