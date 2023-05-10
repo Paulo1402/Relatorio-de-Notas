@@ -36,7 +36,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
 
-        self.timer: QTimer = None
+        self.timer: QTimer | None = None
         self.temp_files = []
         self._ID = -1
 
@@ -545,7 +545,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Carrega anos."""
         self.cb_year.blockSignals(True)
 
-        years = self.database.get_years(self.database)
+        years = self.database.get_years()
         self.cb_year.clear()
         self.cb_year.addItems(years)
 
