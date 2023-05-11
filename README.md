@@ -34,5 +34,6 @@ Para baixar a versão de distribuição clique
 - PyQtDarkTheme
 - AutoPyToExe
 - Jinja2
+- sqlite
 
 #### Icons8 - https://icons8.com.br
