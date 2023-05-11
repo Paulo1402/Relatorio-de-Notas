@@ -2,7 +2,7 @@
 
 Aplicação feita exclusivamente para uso interno de uma empresa na qual fiz parte.
 
-Aplicativo para controle de notas fiscais com relatório criado dinâmicamente, banco de dados compartilhado na rede e 
+Aplicativo para controle de notas fiscais com relatório criado dinamicamente, banco de dados compartilhado na rede e 
 possibilidade de acesso simultâneo, sistema de backup automático, dark / light mode e mais!
 
 Para baixar a versão de distribuição clique
