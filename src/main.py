@@ -18,17 +18,6 @@ from utils import *
 from dialog import *
 
 
-# todo FrontEnd
-
-# todo BackEnd
-
-# todo Refactoring
-
-# todo Testes
-
-# todo Bugs
-
-
 class MainWindow(QMainWindow, Ui_MainWindow):
     """Janela principal do aplicativo."""
 
@@ -37,8 +26,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
 
         self.timer: QTimer | None = None
-        self.temp_files = []
-        self._ID = -1
+        self.temp_files: list = []
+        self._ID: int = -1
+        self.current_year: str | None = None
 
         # Abre conexão com o banco de dados
         self.database = DatabaseConnection()
@@ -109,15 +99,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Retorna ano e mês atual
             current_month, current_year = get_current_month_year()
+            self.current_year = str(current_year)
 
             # Bloqueia eventos para inserir o mês atual
             self.cb_month.blockSignals(True)
             self.cb_month.setCurrentIndex(current_month - 1)
             self.cb_month.blockSignals(False)
-
-            # Insere ano atual pelo índice
-            index = self.cb_year.findText(str(current_year))
-            self.cb_year.setCurrentIndex(index)
 
         # Configura dados
         self.setup_data()
@@ -277,6 +264,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Ativa página 'exportar'."""
         self.mp_main.setCurrentIndex(2)
 
+        # Tentativa de burlar o bug visual da QWebView quando usa QAnimation para animar a transição
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: self.web_view.repaint())
         self.timer.setSingleShot(True)
@@ -352,10 +340,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Prepara para novo registro e avisa usuário
             Message.information(self, 'AVISO', message)
             self.registry_menu_clicked()
+            self.new_registry()
 
             # Recarrega dados
             self.search()
             self.create_report()
+
+            year = fields['date'].split('-')[0]
+            print(year)
+
+            if year != self.current_year:
+                self.load_years()
         except QueryError:
             Message.critical(self, 'CRÍTICO', 'Algo deu errado durante a operação!')
 
@@ -484,11 +479,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         filename = self.get_initial_filename()
         temp_file = os.path.join(os.getenv('temp'), filename)
+        pdf_to_print_path = os.path.join(BASEDIR, 'bin', 'PDFtoPrinter.exe')
 
         self.temp_files.append(temp_file)
-
         self._export_pdf(temp_file)
-        os.popen(fr'.\bin\PDFtoPrinter.exe "{temp_file}"')
+
+        os.popen(fr'{pdf_to_print_path} "{temp_file}"')
 
     @check_connection
     @Slot()
@@ -548,6 +544,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         years = self.database.get_years()
         self.cb_year.clear()
         self.cb_year.addItems(years)
+
+        # Seta ano atual
+        self.cb_year.setCurrentText(self.current_year)
 
         self.cb_year.blockSignals(False)
 

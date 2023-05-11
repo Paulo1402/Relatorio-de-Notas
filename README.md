@@ -1,10 +1,21 @@
-# Relatório de Notas
+# ❤️ Relatório de Notas
 
-Para baixar a versão de distribuição clique aqui. (Apenas para Windows).
+Aplicação feita exclusivamente para uso interno de uma empresa na qual fiz parte.
 
-Com o aplicativo aberto, basta clicar em _Sobre/Ajuda_ no menu superior para abrir um rápido overview no navegador.
+Aplicativo para controle de notas fiscais com banco de dados compartilhado na rede e possibilidade de acesso simultâneo,
+além de conter sistema de backup automático, dark / light mode e mais!
 
-![preview](.github/preview.png)
+Para baixar a versão de distribuição clique
+[aqui](https://github.com/Paulo1402/Relatorio-de-Notas/releases/download/v1.0.0/installer.exe). (Apenas para Windows).
+
+![preview](.github/preview_home.png)
+
+## 🖼️ Imagens
+
+![preview](.github/preview_search.png)
+![preview](.github/preview_export.png)
+![preview](.github/preview_config.png)
+![preview](.github/preview_import.png)
 
 ---
 
