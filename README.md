@@ -2,8 +2,8 @@
 
 Aplicação feita exclusivamente para uso interno de uma empresa na qual fiz parte.
 
-Aplicativo para controle de notas fiscais com banco de dados compartilhado na rede e possibilidade de acesso simultâneo,
-além de conter sistema de backup automático, dark / light mode e mais!
+Aplicativo para controle de notas fiscais com relatório criado dinâmicamente, banco de dados compartilhado na rede e 
+possibilidade de acesso simultâneo, sistema de backup automático, dark / light mode e mais!
 
 Para baixar a versão de distribuição clique
 [aqui](https://github.com/Paulo1402/Relatorio-de-Notas/releases/download/v1.0.0/installer.exe). (Apenas para Windows).
@@ -33,5 +33,6 @@ Para baixar a versão de distribuição clique
 - PySide6
 - PyQtDarkTheme
 - AutoPyToExe
+- Jinja2
 
 #### Icons8 - https://icons8.com.br
